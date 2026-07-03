@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Analyse des cotes football</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.5.3/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Analyse football</p>
+        <h1>Analyse des cotes</h1>
+      </div>
+      <div class="counter">
+        <span id="matchCount">0</span>
+        <small>matchs</small>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel controls">
+        <div class="section-title">
+          <h2>Données</h2>
+          <button id="clearBaseBtn" class="ghost" type="button">Vider</button>
+        </div>
+
+        <label class="file-input">
+          <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" multiple />
+          <span>Ajouter CSV / Excel</span>
+        </label>
+        <button id="importBtn" type="button">Importer les fichiers</button>
+
+        <div class="divider"></div>
+
+        <label>
+          Championnat
+          <select id="downloadLeague"></select>
+        </label>
+        <label>
+          Saisons
+          <input id="downloadSeasons" value="2526,2425,2324,2223,2122" />
+        </label>
+        <div class="button-row">
+          <button id="downloadBtn" type="button">Télécharger</button>
+          <button id="packBtn" class="secondary" type="button">Pack 10 ans</button>
+        </div>
+        <p id="status" class="status"></p>
+      </section>
+
+      <section class="analysis">
+        <section class="panel">
+          <div class="section-title">
+            <h2>Analyse</h2>
+            <span class="rule">1.30 max 3 matchs | 1.70 max 2 matchs</span>
+          </div>
+
+          <div class="grid inputs">
+            <label>
+              Championnat à analyser
+              <select id="championshipFilter"></select>
+            </label>
+            <label>
+              Cote domicile 1
+              <input id="o1" type="number" min="1.01" step="0.01" value="1.80" />
+            </label>
+            <label>
+              Cote nul N
+              <input id="ox" type="number" min="1.01" step="0.01" value="3.40" />
+            </label>
+            <label>
+              Cote extérieur 2
+              <input id="o2" type="number" min="1.01" step="0.01" value="4.50" />
+            </label>
+          </div>
+        </section>
+
+        <section id="emptyState" class="panel empty">
+          Ajoute ou télécharge des données pour commencer l'analyse.
+        </section>
+
+        <section id="results" class="hidden">
+          <div class="metrics">
+            <article>
+              <span>Base utilisée</span>
+              <strong id="baseUsed">0</strong>
+            </article>
+            <article>
+              <span>Matchs analysés</span>
+              <strong id="sampleUsed">0</strong>
+            </article>
+            <article>
+              <span>Confiance</span>
+              <strong id="confidence">FAIBLE</strong>
+            </article>
+            <article>
+              <span>Meilleur signal</span>
+              <strong id="bestSignal">-</strong>
+            </article>
+            <article>
+              <span>Score exact</span>
+              <strong id="exactScore">-</strong>
+            </article>
+          </div>
+
+          <section class="panel">
+            <h2>Propositions par objectif de cote</h2>
+            <div id="proposals" class="proposal-grid"></div>
+          </section>
+
+          <section class="panel">
+            <div class="tabs">
+              <button class="tab active" data-tab="signals">Signaux</button>
+              <button class="tab" data-tab="scores">Scores</button>
+              <button class="tab" data-tab="matches">Matchs similaires</button>
+            </div>
+            <div id="signalsTab" class="tab-content"></div>
+            <div id="scoresTab" class="tab-content hidden"></div>
+            <div id="matchesTab" class="tab-content hidden table-wrap"></div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
