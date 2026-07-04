@@ -383,6 +383,37 @@ button:hover,
   display: none !important;
 }
 
+.recommendation-card {
+  border: 1px solid #8dd8cf;
+  background: linear-gradient(135deg, #0f766e 0%, #115e59 100%);
+  color: white;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.recommendation-card span {
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  opacity: 0.82;
+}
+
+.recommendation-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: clamp(1.8rem, 5vw, 3.1rem);
+  line-height: 1.05;
+}
+
+.recommendation-card p {
+  max-width: 760px;
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.86);
+  line-height: 1.45;
+}
+
 .metrics {
   display: grid;
   grid-template-columns: minmax(0, 4fr) minmax(180px, 1fr);
@@ -448,6 +479,10 @@ button:hover,
 .score-card {
   background: #fffdf5;
   border-color: #f2d48a;
+}
+
+.calc-wide {
+  grid-column: 1 / -1;
 }
 
 .proposal-grid {
@@ -526,6 +561,13 @@ button:hover,
   color: var(--muted);
   font-size: 0.84rem;
   font-weight: 800;
+}
+
+.proposal em {
+  margin-left: 4px;
+  color: var(--accent-dark);
+  font-style: normal;
+  font-weight: 900;
 }
 
 .proposal strong {

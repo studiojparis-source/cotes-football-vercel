@@ -132,9 +132,15 @@
         </section>
 
         <section id="results" class="hidden">
+          <section class="recommendation-card">
+            <span>À jouer</span>
+            <strong id="recommendedPick">-</strong>
+            <p id="recommendedWhy">La recommandation apparaît après le calcul.</p>
+          </section>
+
           <div class="metrics">
             <article class="summary-card">
-              <span>Résumé simulation</span>
+              <span>Résultat simulation</span>
               <div class="summary-grid">
                 <div>
                   <small>Base utilisée</small>
@@ -149,7 +155,7 @@
                   <strong id="confidence">FAIBLE</strong>
                 </div>
                 <div>
-                  <small>Meilleur signal</small>
+                  <small>À jouer en priorité</small>
                   <strong id="bestSignal">-</strong>
                 </div>
               </div>
@@ -166,16 +172,16 @@
           </section>
 
           <section class="panel">
-            <h2>Propositions par objectif de cote</h2>
+            <h2>À jouer selon les données</h2>
             <p class="panel-copy">
-              Le moteur choisit le signal historique le plus intéressant selon l'objectif de cote. Par exemple, cote 1.30 privilégie un signal prudent, cote 1.70 un signal plus sélectif, et cote 2.00 ou 3.00 un signal plus ambitieux.
+              Le moteur classe les marchés qui sont le plus souvent passés dans les matchs similaires. Les petites cotes sont les options les plus prudentes, pas une garantie.
             </p>
             <div id="proposals" class="proposal-grid"></div>
           </section>
 
           <section class="panel">
             <div class="tabs">
-              <button class="tab active" data-tab="signals">Signaux</button>
+              <button class="tab active" data-tab="signals">Détails des probabilités</button>
               <button class="tab" data-tab="scores">Scores</button>
               <button class="tab" data-tab="matches">Matchs similaires</button>
             </div>
@@ -190,35 +196,38 @@
         <section class="panel">
           <div class="section-title">
             <h2>Calcul</h2>
-            <span class="rule">Cotes → probabilités → comparaison historique</span>
+            <span class="rule">Cotes → matchs similaires → recommandation</span>
           </div>
+          <p class="panel-copy">
+            Cet onglet explique comment l'app transforme les cotes saisies en recommandation à jouer.
+          </p>
           <div id="calculationSummary" class="calculation-grid"></div>
         </section>
 
         <section class="panel">
-          <h2>Lecture du moteur</h2>
+          <h2>Comment lire le résultat</h2>
           <div class="logic-steps">
             <article>
-              <strong>1. Probabilité brute</strong>
-              <span>Chaque cote est transformée avec 1 divisé par la cote.</span>
+              <strong>1. Les cotes donnent le profil du match</strong>
+              <span>L'app transforme 1 / N / 2 en probabilités pour comprendre le rapport de force attendu.</span>
             </article>
             <article>
-              <strong>2. Marge du marché</strong>
-              <span>La somme des probabilités dépasse souvent 100 %, c'est la marge incluse dans les cotes.</span>
+              <strong>2. Elle cherche les matchs similaires</strong>
+              <span>Elle compare ce profil aux anciens matchs de la base, puis garde ceux qui ressemblent le plus.</span>
             </article>
             <article>
-              <strong>3. Probabilité normalisée</strong>
-              <span>Le moteur retire l'effet de marge pour comparer proprement les profils 1 / N / 2.</span>
+              <strong>3. Elle calcule les signaux</strong>
+              <span>Sur ces matchs similaires, elle regarde ce qui est arrivé le plus souvent : buts, BTTS, nul, domicile, extérieur.</span>
             </article>
             <article>
-              <strong>4. Matchs similaires</strong>
-              <span>Il cherche dans la base historique les anciens matchs dont les probabilités ressemblent le plus.</span>
+              <strong>4. Elle propose quoi jouer</strong>
+              <span>La carte À jouer prend le signal prudent le plus fort, surtout adapté aux petites cotes.</span>
             </article>
           </div>
         </section>
       </section>
     </main>
 
-    <script src="/app.js?v=20260704-teams"></script>
+    <script src="/app.js?v=20260704-recommendation"></script>
   </body>
 </html>

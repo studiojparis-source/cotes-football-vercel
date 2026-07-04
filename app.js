@@ -374,33 +374,43 @@ function chooseBestSample(rows, o1, ox, o2) {
 
 function proposalsByOdds(signals) {
   const groups = {
-    "1.30": { "+1.5 buts": signals["+1.5 buts"], "-3.5 buts": signals["-3.5 buts"] },
-    "1.70": {
+    "Petite cote": { target: "~1.30", choices: { "+1.5 buts": signals["+1.5 buts"], "-3.5 buts": signals["-3.5 buts"] } },
+    "Cote moyenne": {
+      target: "~1.70",
+      choices: {
       "BTTS Oui": signals["BTTS Oui"],
       "BTTS Non": signals["BTTS Non"],
       "+2.5 buts": signals["+2.5 buts"],
       "-2.5 buts": signals["-2.5 buts"],
       "Domicile -0.5 but": signals["Domicile -0.5 but"],
       "Extérieur -0.5 but": signals["Extérieur -0.5 but"],
+      },
     },
-    "2.00": {
+    "Plus risqué": {
+      target: "~2.00",
+      choices: {
       "Nul à la mi-temps": signals["Nul à la mi-temps"],
       "Domicile gagne MT": signals["Domicile gagne MT"],
       "Extérieur gagne MT": signals["Extérieur gagne MT"],
       "1ère MT plus prolifique": signals["1ère MT plus prolifique"],
       "2ème MT plus prolifique": signals["2ème MT plus prolifique"],
+      },
     },
-    "3.00": {
+    "Très risqué": {
+      target: "~3.00",
+      choices: {
       "Match nul": signals["Match nul"],
       "1ère MT plus prolifique": signals["1ère MT plus prolifique"],
       "+3.5 buts": signals["+3.5 buts"],
+      },
     },
   };
 
   return Object.fromEntries(
-    Object.entries(groups).map(([odds, choices]) => {
+    Object.entries(groups).map(([risk, group]) => {
+      const choices = group.choices;
       const best = Object.entries(choices).reduce((winner, current) => (current[1] > winner[1] ? current : winner));
-      return [odds, best];
+      return [risk, { target: group.target, best }];
     }),
   );
 }
@@ -799,8 +809,16 @@ function runAnalysis() {
   $("exactScore").textContent = `${exactScore} (${exactCount} fois)`;
 
   const proposals = proposalsByOdds(best.signals);
+  const safePick = proposals["Petite cote"];
+  if (safePick) {
+    $("recommendedPick").textContent = safePick.best[0];
+    $("recommendedWhy").textContent = `${safePick.best[1]} % des matchs similaires ont validé ce marché. C'est la proposition la plus prudente selon les données, autour d'une petite cote ${safePick.target}.`;
+  }
   $("proposals").innerHTML = Object.entries(proposals)
-    .map(([odds, [name, value]]) => `<article class="proposal"><span>Cote ${odds}</span><strong>${escapeHtml(name)}</strong><small>${value} %</small></article>`)
+    .map(
+      ([risk, proposal]) =>
+        `<article class="proposal"><span>${escapeHtml(risk)} <em>${escapeHtml(proposal.target)}</em></span><strong>${escapeHtml(proposal.best[0])}</strong><small>${proposal.best[1]} % dans les matchs similaires</small></article>`,
+    )
     .join("");
 
   renderList($("signalsTab"), Object.entries(best.signals));
@@ -830,6 +848,10 @@ function renderCalculations() {
   const normalized = raw.map(([name, value]) => [name, value / total]);
 
   container.innerHTML = `
+    <article class="calc-card calc-wide">
+      <span>Ce que l'app utilise pour recommander</span>
+      <strong>Le profil des cotes + les matchs historiques similaires</strong>
+    </article>
     <article class="calc-card">
       <span>Probabilité brute domicile</span>
       <strong>${(raw[0][1] * 100).toFixed(1)} %</strong>
