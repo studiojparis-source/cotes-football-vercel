@@ -105,6 +105,14 @@
               <select id="championshipFilter"></select>
             </label>
             <label>
+              Équipe domicile
+              <select id="homeTeamFilter"></select>
+            </label>
+            <label>
+              Équipe extérieur
+              <select id="awayTeamFilter"></select>
+            </label>
+            <label>
               Cote domicile 1
               <input id="o1" type="number" min="1.01" step="0.01" value="1.80" />
             </label>
@@ -125,30 +133,43 @@
 
         <section id="results" class="hidden">
           <div class="metrics">
-            <article>
-              <span>Base utilisée</span>
-              <strong id="baseUsed">0</strong>
+            <article class="summary-card">
+              <span>Résumé simulation</span>
+              <div class="summary-grid">
+                <div>
+                  <small>Base utilisée</small>
+                  <strong id="baseUsed">0</strong>
+                </div>
+                <div>
+                  <small>Matchs analysés</small>
+                  <strong id="sampleUsed">0</strong>
+                </div>
+                <div>
+                  <small>Confiance</small>
+                  <strong id="confidence">FAIBLE</strong>
+                </div>
+                <div>
+                  <small>Meilleur signal</small>
+                  <strong id="bestSignal">-</strong>
+                </div>
+              </div>
             </article>
-            <article>
-              <span>Matchs analysés</span>
-              <strong id="sampleUsed">0</strong>
-            </article>
-            <article>
-              <span>Confiance</span>
-              <strong id="confidence">FAIBLE</strong>
-            </article>
-            <article>
-              <span>Meilleur signal</span>
-              <strong id="bestSignal">-</strong>
-            </article>
-            <article>
+            <article class="score-card">
               <span>Score exact</span>
               <strong id="exactScore">-</strong>
             </article>
           </div>
 
           <section class="panel">
+            <h2>Lecture équipes</h2>
+            <div id="teamProfile" class="team-profile"></div>
+          </section>
+
+          <section class="panel">
             <h2>Propositions par objectif de cote</h2>
+            <p class="panel-copy">
+              Le moteur choisit le signal historique le plus intéressant selon l'objectif de cote. Par exemple, cote 1.30 privilégie un signal prudent, cote 1.70 un signal plus sélectif, et cote 2.00 ou 3.00 un signal plus ambitieux.
+            </p>
             <div id="proposals" class="proposal-grid"></div>
           </section>
 
@@ -198,6 +219,6 @@
       </section>
     </main>
 
-    <script src="/app.js?v=20260704-filters"></script>
+    <script src="/app.js?v=20260704-teams"></script>
   </body>
 </html>

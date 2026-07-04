@@ -220,7 +220,7 @@ button:hover,
 
 .grid.inputs {
   display: grid;
-  grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(120px, 1fr));
+  grid-template-columns: repeat(3, minmax(150px, 1fr)) repeat(3, minmax(110px, 0.8fr));
   gap: 12px;
 }
 
@@ -385,21 +385,22 @@ button:hover,
 
 .metrics {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 4fr) minmax(180px, 1fr);
   gap: 12px;
 }
 
 .metrics article {
   display: grid;
   gap: 5px;
-  min-height: 92px;
-  padding: 14px;
+  min-height: 108px;
+  padding: 16px;
 }
 
 .metrics span {
   color: var(--muted);
   font-size: 0.82rem;
-  font-weight: 700;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .metrics strong {
@@ -407,11 +408,112 @@ button:hover,
   font-size: clamp(1rem, 2vw, 1.35rem);
 }
 
+.summary-card {
+  border-color: #9de5dc;
+  background: linear-gradient(135deg, #f7fffc 0%, #eefbf7 100%);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.summary-grid div {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.72);
+  padding: 12px;
+}
+
+.summary-grid small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.summary-grid strong {
+  display: block;
+  margin-top: 6px;
+  font-size: clamp(1.05rem, 2vw, 1.45rem);
+  line-height: 1.15;
+}
+
+.summary-grid div:nth-child(3) strong,
+.summary-grid div:nth-child(4) strong {
+  color: var(--accent-dark);
+}
+
+.score-card {
+  background: #fffdf5;
+  border-color: #f2d48a;
+}
+
 .proposal-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-top: 14px;
+}
+
+.team-profile {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.team-card {
+  border: 1px solid var(--line);
+  background: #fbfdfc;
+  padding: 14px;
+}
+
+.team-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.team-card strong {
+  display: block;
+  margin: 7px 0 10px;
+  font-size: 1.08rem;
+}
+
+.team-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mini-grid div {
+  border: 1px solid var(--line);
+  background: white;
+  padding: 9px;
+}
+
+.mini-grid small,
+.mini-grid b {
+  display: block;
+}
+
+.mini-grid small {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.mini-grid b {
+  margin-top: 3px;
 }
 
 .proposal {
@@ -484,8 +586,69 @@ td {
 }
 
 th {
+  position: relative;
   background: #eef3f1;
   color: #344054;
+  overflow: visible;
+}
+
+.th-help {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.help-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #cfeee8;
+  color: var(--accent-dark);
+  font-size: 0.82rem;
+  font-weight: 900;
+  cursor: help;
+  box-shadow: inset 0 0 0 1px #92d8cf, 0 1px 2px rgba(15, 118, 110, 0.15);
+}
+
+.help-dot:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.help-dot:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.help-tooltip {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  width: max-content;
+  max-width: 260px;
+  border: 1px solid var(--line);
+  background: #17211f;
+  color: white;
+  padding: 9px 10px;
+  box-shadow: var(--shadow);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.th-help:hover .help-tooltip,
+.help-dot:focus + .help-tooltip {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 @media (max-width: 900px) {
@@ -500,7 +663,9 @@ th {
   .grid.inputs,
   .search-grid,
   .metrics,
+  .summary-grid,
   .proposal-grid,
+  .team-profile,
   .signal-list,
   .score-list,
   .history-stats,

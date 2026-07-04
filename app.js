@@ -411,12 +411,164 @@ function countsBy(rows, field, limit = 10) {
   return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit);
 }
 
+function teamOptions(rows) {
+  const teams = new Set();
+  rows.forEach((row) => {
+    if (row.Home) teams.add(row.Home);
+    if (row.Away) teams.add(row.Away);
+  });
+  return [...teams].sort((a, b) => a.localeCompare(b, "fr"));
+}
+
+function fillSelect(select, values, placeholder, currentValue) {
+  const options = ["", ...values];
+  select.innerHTML = options
+    .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value || placeholder)}</option>`)
+    .join("");
+  select.value = options.includes(currentValue) ? currentValue : "";
+}
+
+function updateSimulationTeamFilters() {
+  const championship = $("championshipFilter").value || "Tous";
+  const rows = championship === "Tous" ? base : base.filter((row) => row.Championnat === championship);
+  fillSelect($("homeTeamFilter"), teamOptions(rows), "Toutes les équipes domicile", $("homeTeamFilter").value);
+  fillSelect($("awayTeamFilter"), teamOptions(rows), "Toutes les équipes extérieur", $("awayTeamFilter").value);
+}
+
+function teamStats(rows, label, emptyText) {
+  if (!rows.length) {
+    return { label, count: 0, emptyText };
+  }
+
+  const goalsFor = rows.reduce((sum, row) => sum + row.FTHG, 0);
+  const goalsAgainst = rows.reduce((sum, row) => sum + row.FTAG, 0);
+  const wins = pct(rows, "Resultat", "1");
+  const draws = pct(rows, "Resultat", "N");
+  const losses = pct(rows, "Resultat", "2");
+  return {
+    label,
+    count: rows.length,
+    avgFor: goalsFor / rows.length,
+    avgAgainst: goalsAgainst / rows.length,
+    over25: pct(rows, "Over25", "Oui"),
+    btts: pct(rows, "BTTS", "Oui"),
+    wins,
+    draws,
+    losses,
+  };
+}
+
+function renderTeamStatCard(stat) {
+  if (!stat.count) {
+    return `<article class="team-card"><span>${escapeHtml(stat.label)}</span><strong>${escapeHtml(stat.emptyText)}</strong></article>`;
+  }
+
+  return `
+    <article class="team-card">
+      <span>${escapeHtml(stat.label)}</span>
+      <strong>${stat.count.toLocaleString("fr-FR")} matchs</strong>
+      <div class="mini-grid">
+        <div><small>Buts marqués</small><b>${stat.avgFor.toFixed(2)}</b></div>
+        <div><small>Buts encaissés</small><b>${stat.avgAgainst.toFixed(2)}</b></div>
+        <div><small>+2.5 buts</small><b>${stat.over25} %</b></div>
+        <div><small>BTTS Oui</small><b>${stat.btts} %</b></div>
+        <div><small>Victoires</small><b>${stat.wins} %</b></div>
+        <div><small>Nuls</small><b>${stat.draws} %</b></div>
+        <div><small>Défaites</small><b>${stat.losses} %</b></div>
+      </div>
+    </article>
+  `;
+}
+
+function renderTeamProfile(rows, homeTeam, awayTeam) {
+  const container = $("teamProfile");
+  if (!homeTeam && !awayTeam) {
+    container.innerHTML = `
+      <article class="team-card">
+        <span>Mode actuel</span>
+        <strong>Simulation par cotes</strong>
+        <p>Choisis une équipe domicile et une équipe extérieur pour ajouter la lecture par équipes.</p>
+      </article>
+    `;
+    return;
+  }
+
+  const homeRows = homeTeam ? rows.filter((row) => row.Home === homeTeam) : [];
+  const awayRows = awayTeam ? rows.filter((row) => row.Away === awayTeam) : [];
+  const h2hRows =
+    homeTeam && awayTeam
+      ? rows.filter((row) => (row.Home === homeTeam && row.Away === awayTeam) || (row.Home === awayTeam && row.Away === homeTeam))
+      : [];
+  const homeStat = teamStats(homeRows, `${homeTeam || "Domicile"} à domicile`, "Choisis une équipe domicile");
+  const awayStat = teamStats(
+    awayRows.map((row) => ({ ...row, FTHG: row.FTAG, FTAG: row.FTHG, Resultat: row.Resultat === "1" ? "2" : row.Resultat === "2" ? "1" : "N" })),
+    `${awayTeam || "Extérieur"} à l'extérieur`,
+    "Choisis une équipe extérieur",
+  );
+  const h2hScores = countsBy(h2hRows, "Score", 3);
+
+  container.innerHTML = `
+    ${renderTeamStatCard(homeStat)}
+    ${renderTeamStatCard(awayStat)}
+    <article class="team-card">
+      <span>Confrontations dans la base</span>
+      <strong>${h2hRows.length.toLocaleString("fr-FR")} match${h2hRows.length > 1 ? "s" : ""}</strong>
+      <p>${h2hRows.length ? h2hScores.map(([score, count]) => `${escapeHtml(score)} (${count})`).join(" · ") : "Pas assez de données directes, donc le moteur garde les cotes comme signal principal."}</p>
+    </article>
+  `;
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+}
+
+const COLUMN_HELP = {
+  Date: "Date du match.",
+  Championnat: "Championnat ou ligue du match.",
+  Home: "Équipe qui joue à domicile.",
+  Away: "Équipe qui joue à l'extérieur.",
+  O1: "Cote victoire domicile.",
+  OX: "Cote match nul.",
+  O2: "Cote victoire extérieur.",
+  Score: "Score final du match.",
+  Score_MT: "Score à la mi-temps.",
+  Resultat: "Résultat final : 1 = domicile, N = nul, 2 = extérieur.",
+  Over15: "Oui si le match a eu au moins 2 buts.",
+  Under15: "Oui si le match a eu 0 ou 1 but.",
+  Over25: "Oui si le match a eu au moins 3 buts.",
+  Under25: "Oui si le match a eu 0, 1 ou 2 buts.",
+  Over35: "Oui si le match a eu au moins 4 buts.",
+  Under35: "Oui si le match a eu 0 à 3 buts.",
+  BTTS: "Both teams to score : Oui si les deux équipes ont marqué.",
+  BTTS_Non: "Oui si au moins une équipe n'a pas marqué.",
+  Home_Over05: "Oui si l'équipe domicile a marqué au moins 1 but.",
+  Away_Over05: "Oui si l'équipe extérieur a marqué au moins 1 but.",
+  DC_1X: "Double chance : domicile gagne ou match nul.",
+  DC_X2: "Double chance : extérieur gagne ou match nul.",
+  DC_12: "Double chance : domicile ou extérieur gagne, donc pas nul.",
+  Nul_MT: "Oui si le score était nul à la mi-temps.",
+  HomeWin_MT: "Oui si le domicile gagnait à la mi-temps.",
+  AwayWin_MT: "Oui si l'extérieur gagnait à la mi-temps.",
+  MT_Prolifique: "Mi-temps avec le plus de buts.",
+  Distance: "Écart entre les cotes du match historique et les cotes saisies. Plus c'est petit, plus le match est similaire.",
+};
+
+function renderHeaderCell(col) {
+  const help = COLUMN_HELP[col];
+  if (!help) return `<th>${escapeHtml(col)}</th>`;
+  return `
+    <th title="${escapeHtml(help)}">
+      <span class="th-help">
+        ${escapeHtml(col)}
+        <span class="help-dot" tabindex="0" title="${escapeHtml(help)}" aria-label="${escapeHtml(help)}">?</span>
+        <span class="help-tooltip">${escapeHtml(help)}</span>
+      </span>
+    </th>
+  `;
 }
 
 function renderList(container, rows) {
@@ -462,7 +614,7 @@ function renderTable(container, rows) {
     "MT_Prolifique",
     "Distance",
   ];
-  container.innerHTML = `<table><thead><tr>${cols.map((col) => `<th>${col}</th>`).join("")}</tr></thead><tbody>${rows
+  container.innerHTML = `<p class="table-note">Survole les points ? dans les titres pour voir l'explication de chaque colonne.</p><table><thead><tr>${cols.map(renderHeaderCell).join("")}</tr></thead><tbody>${rows
     .map((row) => `<tr>${cols.map((col) => `<td>${escapeHtml(col === "Distance" ? row[col].toFixed(4) : row[col])}</td>`).join("")}</tr>`)
     .join("")}</tbody></table>`;
 }
@@ -592,6 +744,7 @@ function updateBaseUI() {
   $("historyMatchCount").textContent = base.length.toLocaleString("fr-FR");
   const champs = ["Tous", ...new Set(base.map((row) => row.Championnat).filter(Boolean).sort())];
   $("championshipFilter").innerHTML = champs.map((name) => `<option>${escapeHtml(name)}</option>`).join("");
+  updateSimulationTeamFilters();
   $("historyLeagueCount").textContent = Math.max(champs.length - 1, 0).toLocaleString("fr-FR");
   $("historyLeagues").innerHTML =
     champs.length > 1
@@ -619,10 +772,13 @@ function runAnalysis() {
 
   const championship = $("championshipFilter").value || "Tous";
   const rows = championship === "Tous" ? base : base.filter((row) => row.Championnat === championship);
+  const homeTeam = $("homeTeamFilter").value || "";
+  const awayTeam = $("awayTeamFilter").value || "";
   const o1 = toNumber($("o1").value);
   const ox = toNumber($("ox").value);
   const o2 = toNumber($("o2").value);
   const best = chooseBestSample(rows, o1, ox, o2);
+  renderTeamProfile(rows, homeTeam, awayTeam);
 
   if (!best) {
     empty.textContent = "Analyse impossible avec ces cotes.";
@@ -805,7 +961,12 @@ function setupMainMenu() {
 
 async function init() {
   $("reloadBaseBtn").addEventListener("click", loadBaseFromSupabase);
-  ["championshipFilter", "o1", "ox", "o2"].forEach((id) =>
+  $("championshipFilter").addEventListener("input", () => {
+    updateSimulationTeamFilters();
+    runAnalysis();
+    renderCalculations();
+  });
+  ["homeTeamFilter", "awayTeamFilter", "o1", "ox", "o2"].forEach((id) =>
     $(id).addEventListener("input", () => {
       runAnalysis();
       renderCalculations();
