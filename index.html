@@ -20,40 +20,82 @@
       </div>
     </header>
 
-    <main class="layout">
-      <section class="panel controls">
-        <div class="section-title">
-          <h2>Données</h2>
-          <button id="clearBaseBtn" class="ghost" type="button">Vider</button>
-        </div>
+    <nav class="main-menu" aria-label="Menu principal">
+      <button class="menu-button active" type="button" data-view="historique">Base Historique</button>
+      <button class="menu-button" type="button" data-view="simulation">Simulation</button>
+      <button class="menu-button" type="button" data-view="calcul">Calcul</button>
+    </nav>
 
-        <label class="file-input">
-          <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" multiple />
-          <span>Ajouter CSV / Excel</span>
-        </label>
-        <button id="importBtn" type="button">Importer les fichiers</button>
+    <main>
+      <section id="historiqueView" class="app-view view-grid">
+        <section class="panel controls">
+          <div class="section-title">
+            <h2>Base Historique</h2>
+            <span class="source-badge">Supabase</span>
+          </div>
 
-        <div class="divider"></div>
+          <p class="panel-copy">
+            La base est maintenant en ligne. Les matchs historiques sont chargés depuis Supabase, sans import Excel.
+          </p>
+          <button id="reloadBaseBtn" type="button">Recharger la base</button>
+          <p id="status" class="status"></p>
+        </section>
 
-        <label>
-          Championnat
-          <select id="downloadLeague"></select>
-        </label>
-        <label>
-          Saisons
-          <input id="downloadSeasons" value="2526,2425,2324,2223,2122" />
-        </label>
-        <div class="button-row">
-          <button id="downloadBtn" type="button">Télécharger</button>
-          <button id="packBtn" class="secondary" type="button">Pack 10 ans</button>
-        </div>
-        <p id="status" class="status"></p>
+        <section class="panel">
+          <h2>Contenu de la base</h2>
+          <div class="history-stats">
+            <article>
+              <span>Total matchs</span>
+              <strong id="historyMatchCount">0</strong>
+            </article>
+            <article>
+              <span>Championnats</span>
+              <strong id="historyLeagueCount">0</strong>
+            </article>
+          </div>
+          <div class="divider"></div>
+          <div id="historyLeagues" class="league-list"></div>
+        </section>
+
+        <section class="panel history-search-panel">
+          <div class="section-title">
+            <h2>Rechercher dans la base</h2>
+            <span id="searchResultCount" class="source-badge">0 résultat</span>
+          </div>
+
+          <div class="grid search-grid">
+            <label>
+              Équipe
+              <input id="historySearchTeam" placeholder="Ex : Paris, Arsenal, Milan" />
+            </label>
+            <label>
+              Championnat
+              <select id="historySearchLeague"></select>
+            </label>
+            <label>
+              Saison
+              <select id="historySearchSeason"></select>
+            </label>
+            <label>
+              Résultat
+              <select id="historySearchResult">
+                <option value="Tous">Tous</option>
+                <option value="1">Domicile gagne</option>
+                <option value="N">Match nul</option>
+                <option value="2">Extérieur gagne</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="historySearchChart" class="history-chart"></div>
+          <div id="historySearchResults" class="table-wrap compact-table"></div>
+        </section>
       </section>
 
-      <section class="analysis">
+      <section id="simulationView" class="app-view analysis hidden">
         <section class="panel">
           <div class="section-title">
-            <h2>Analyse</h2>
+            <h2>Simulation</h2>
             <span class="rule">1.30 max 3 matchs | 1.70 max 2 matchs</span>
           </div>
 
@@ -120,6 +162,38 @@
             <div id="scoresTab" class="tab-content hidden"></div>
             <div id="matchesTab" class="tab-content hidden table-wrap"></div>
           </section>
+        </section>
+      </section>
+
+      <section id="calculView" class="app-view analysis hidden">
+        <section class="panel">
+          <div class="section-title">
+            <h2>Calcul</h2>
+            <span class="rule">Cotes → probabilités → comparaison historique</span>
+          </div>
+          <div id="calculationSummary" class="calculation-grid"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Lecture du moteur</h2>
+          <div class="logic-steps">
+            <article>
+              <strong>1. Probabilité brute</strong>
+              <span>Chaque cote est transformée avec 1 divisé par la cote.</span>
+            </article>
+            <article>
+              <strong>2. Marge du marché</strong>
+              <span>La somme des probabilités dépasse souvent 100 %, c'est la marge incluse dans les cotes.</span>
+            </article>
+            <article>
+              <strong>3. Probabilité normalisée</strong>
+              <span>Le moteur retire l'effet de marge pour comparer proprement les profils 1 / N / 2.</span>
+            </article>
+            <article>
+              <strong>4. Matchs similaires</strong>
+              <span>Il cherche dans la base historique les anciens matchs dont les probabilités ressemblent le plus.</span>
+            </article>
+          </div>
         </section>
       </section>
     </main>

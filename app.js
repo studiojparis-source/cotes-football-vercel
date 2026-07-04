@@ -13,8 +13,10 @@ const LEAGUES = {
   "Belgique Pro League": "B1",
   "Portugal Liga": "P1",
 };
-const SEASONS_10_YEARS = ["2526", "2425", "2324", "2223", "2122", "2021", "1920", "1819", "1718", "1617"];
-const STORE_KEY = "base";
+const SUPABASE_URL = "https://tuyntjezgxwscsapavzu.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1eW50amV6Z3h3c2NzYXBhdnp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMDcwMDYsImV4cCI6MjA5ODY4MzAwNn0.nuQdkaQFUra1vMJpE5cJwWS6knfGDKbKxwKbFOkI8tc";
+const SUPABASE_PAGE_SIZE = 1000;
 
 let base = [];
 
@@ -37,42 +39,6 @@ function leagueName(code) {
     SC0: "Écosse Premiership",
   };
   return reverse[String(code)] || extra[String(code)] || String(code);
-}
-
-function openDB() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open("cotes-football", 1);
-    request.onupgradeneeded = () => request.result.createObjectStore("kv");
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-async function getSavedBase() {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const request = db.transaction("kv", "readonly").objectStore("kv").get(STORE_KEY);
-    request.onsuccess = () => resolve(request.result || []);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-async function saveBase(data) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const request = db.transaction("kv", "readwrite").objectStore("kv").put(data, STORE_KEY);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-async function clearSavedBase() {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const request = db.transaction("kv", "readwrite").objectStore("kv").delete(STORE_KEY);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
 }
 
 function addMissingCalculatedColumns(rows) {
@@ -109,6 +75,118 @@ function addMissingCalculatedColumns(rows) {
     out.MT_Prolifique = out.Buts_1MT > out.Buts_2MT ? "1ère MT" : out.Buts_2MT > out.Buts_1MT ? "2ème MT" : "Égalité";
     return out;
   });
+}
+
+function yesNo(value) {
+  return value ? "Oui" : "Non";
+}
+
+function mapSupabaseMatch(row) {
+  return {
+    Date: row.match_date || "",
+    Championnat: row.championnat,
+    Home: row.home,
+    Away: row.away,
+    O1: toNumber(row.o1),
+    OX: toNumber(row.ox),
+    O2: toNumber(row.o2),
+    FTHG: toNumber(row.fthg),
+    FTAG: toNumber(row.ftag),
+    HTHG: toNumber(row.hthg),
+    HTAG: toNumber(row.htag),
+    Score: row.score,
+    Score_MT: row.score_mt,
+    Resultat: row.resultat,
+    Over15: yesNo(row.over15),
+    Under15: yesNo(row.under15),
+    Over25: yesNo(row.over25),
+    Under25: yesNo(row.under25),
+    Over35: yesNo(row.over35),
+    Under35: yesNo(row.under35),
+    BTTS: yesNo(row.btts),
+    BTTS_Non: yesNo(row.btts_non),
+    Home_Over05: yesNo(row.home_over05),
+    Home_Under05: yesNo(row.home_under05),
+    Away_Over05: yesNo(row.away_over05),
+    Away_Under05: yesNo(row.away_under05),
+    DC_1X: yesNo(row.dc_1x),
+    DC_X2: yesNo(row.dc_x2),
+    DC_12: yesNo(row.dc_12),
+    Nul_MT: yesNo(row.nul_mt),
+    HomeWin_MT: yesNo(row.homewin_mt),
+    AwayWin_MT: yesNo(row.awaywin_mt),
+    Buts_1MT: toNumber(row.buts_1mt),
+    Buts_2MT: toNumber(row.buts_2mt),
+    MT_Prolifique: row.mt_prolifique,
+    Season: row.season,
+  };
+}
+
+async function fetchSupabasePage(from, to) {
+  const columns = [
+    "match_date",
+    "season",
+    "championnat",
+    "home",
+    "away",
+    "o1",
+    "ox",
+    "o2",
+    "fthg",
+    "ftag",
+    "hthg",
+    "htag",
+    "score",
+    "score_mt",
+    "resultat",
+    "over15",
+    "under15",
+    "over25",
+    "under25",
+    "over35",
+    "under35",
+    "btts",
+    "btts_non",
+    "home_over05",
+    "home_under05",
+    "away_over05",
+    "away_under05",
+    "dc_1x",
+    "dc_x2",
+    "dc_12",
+    "nul_mt",
+    "homewin_mt",
+    "awaywin_mt",
+    "buts_1mt",
+    "buts_2mt",
+    "mt_prolifique",
+  ].join(",");
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/matches?select=${columns}&order=id.asc`, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      Range: `${from}-${to}`,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Supabase ${response.status}: impossible de charger la base`);
+  }
+  return response.json();
+}
+
+async function loadBaseFromSupabase() {
+  const rows = [];
+  let from = 0;
+  while (true) {
+    $("status").textContent = `Chargement Supabase... ${rows.length.toLocaleString("fr-FR")} matchs`;
+    const page = await fetchSupabasePage(from, from + SUPABASE_PAGE_SIZE - 1);
+    rows.push(...page);
+    if (page.length < SUPABASE_PAGE_SIZE) break;
+    from += SUPABASE_PAGE_SIZE;
+  }
+  base = rows.map(mapSupabaseMatch);
+  $("status").textContent = `Base Supabase chargée : ${base.length.toLocaleString("fr-FR")} matchs`;
+  updateBaseUI();
 }
 
 function prepareData(rawRows, sourceName = "") {
@@ -389,11 +467,139 @@ function renderTable(container, rows) {
     .join("")}</tbody></table>`;
 }
 
+function renderHistorySearchResults(rows) {
+  const container = $("historySearchResults");
+  const count = $("searchResultCount");
+  const visibleRows = rows.slice(0, 100);
+  count.textContent = `${rows.length.toLocaleString("fr-FR")} résultat${rows.length > 1 ? "s" : ""}`;
+
+  if (!base.length) {
+    container.innerHTML = `<p class="empty-inline">La base Supabase est en cours de chargement.</p>`;
+    return;
+  }
+
+  if (!visibleRows.length) {
+    container.innerHTML = `<p class="empty-inline">Aucun match trouvé.</p>`;
+    return;
+  }
+
+  const cols = ["Date", "Season", "Championnat", "Home", "Away", "O1", "OX", "O2", "Score", "Score_MT", "Resultat"];
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>${cols.map((col) => `<th>${col === "Season" ? "Saison" : col}</th>`).join("")}</tr>
+      </thead>
+      <tbody>
+        ${visibleRows
+          .map((row) => `<tr>${cols.map((col) => `<td>${escapeHtml(row[col])}</td>`).join("")}</tr>`)
+          .join("")}
+      </tbody>
+    </table>
+    ${rows.length > visibleRows.length ? `<p class="table-note">Affichage limité aux 100 premiers résultats.</p>` : ""}
+  `;
+}
+
+function percentage(rows, field, value) {
+  if (!rows.length) return 0;
+  return Math.round((rows.filter((row) => row[field] === value).length / rows.length) * 100);
+}
+
+function renderHistoryChart(rows) {
+  const container = $("historySearchChart");
+  if (!base.length) {
+    container.innerHTML = "";
+    return;
+  }
+
+  const stats = [
+    ["Domicile gagne", percentage(rows, "Resultat", "1")],
+    ["Match nul", percentage(rows, "Resultat", "N")],
+    ["Extérieur gagne", percentage(rows, "Resultat", "2")],
+    ["+2.5 buts", percentage(rows, "Over25", "Oui")],
+    ["-2.5 buts", percentage(rows, "Under25", "Oui")],
+    ["BTTS Oui", percentage(rows, "BTTS", "Oui")],
+  ];
+
+  container.innerHTML = `
+    <div class="chart-head">
+      <strong>Résumé des matchs trouvés</strong>
+      <span>${rows.length.toLocaleString("fr-FR")} match${rows.length > 1 ? "s" : ""}</span>
+    </div>
+    <div class="bar-list">
+      ${stats
+        .map(
+          ([label, value]) => `
+            <div class="bar-row">
+              <span>${escapeHtml(label)}</span>
+              <div class="bar-track">
+                <div class="bar-fill" style="width: ${value}%"></div>
+              </div>
+              <strong>${value} %</strong>
+            </div>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function updateHistorySearchFilters() {
+  const leagues = ["Tous", ...new Set(base.map((row) => row.Championnat).filter(Boolean).sort())];
+  const seasons = ["Toutes", ...new Set(base.map((row) => row.Season).filter(Boolean).sort().reverse())];
+  const currentLeague = $("historySearchLeague").value || "Tous";
+  const currentSeason = $("historySearchSeason").value || "Toutes";
+
+  $("historySearchLeague").innerHTML = leagues.map((name) => `<option>${escapeHtml(name)}</option>`).join("");
+  $("historySearchSeason").innerHTML = seasons.map((season) => `<option>${escapeHtml(season)}</option>`).join("");
+  $("historySearchLeague").value = leagues.includes(currentLeague) ? currentLeague : "Tous";
+  $("historySearchSeason").value = seasons.includes(currentSeason) ? currentSeason : "Toutes";
+}
+
+function runHistorySearch() {
+  const team = $("historySearchTeam").value.trim().toLowerCase();
+  const league = $("historySearchLeague").value || "Tous";
+  const season = $("historySearchSeason").value || "Toutes";
+  const result = $("historySearchResult").value || "Tous";
+
+  let rows = base;
+  if (team) {
+    rows = rows.filter((row) => row.Home.toLowerCase().includes(team) || row.Away.toLowerCase().includes(team));
+  }
+  if (league !== "Tous") {
+    rows = rows.filter((row) => row.Championnat === league);
+  }
+  if (season !== "Toutes") {
+    rows = rows.filter((row) => row.Season === season);
+  }
+  if (result !== "Tous") {
+    rows = rows.filter((row) => row.Resultat === result);
+  }
+
+  rows = rows.slice().sort((a, b) => String(b.Date).localeCompare(String(a.Date)));
+  renderHistoryChart(rows);
+  renderHistorySearchResults(rows);
+}
+
 function updateBaseUI() {
   $("matchCount").textContent = base.length.toLocaleString("fr-FR");
+  $("historyMatchCount").textContent = base.length.toLocaleString("fr-FR");
   const champs = ["Tous", ...new Set(base.map((row) => row.Championnat).filter(Boolean).sort())];
   $("championshipFilter").innerHTML = champs.map((name) => `<option>${escapeHtml(name)}</option>`).join("");
+  $("historyLeagueCount").textContent = Math.max(champs.length - 1, 0).toLocaleString("fr-FR");
+  $("historyLeagues").innerHTML =
+    champs.length > 1
+      ? champs
+          .slice(1)
+          .map((name) => {
+            const count = base.filter((row) => row.Championnat === name).length;
+            return `<div class="line-item"><span>${escapeHtml(name)}</span><strong>${count.toLocaleString("fr-FR")}</strong></div>`;
+          })
+          .join("")
+      : `<div class="line-item"><span>Aucune donnée chargée</span><strong>0</strong></div>`;
+  updateHistorySearchFilters();
+  runHistorySearch();
   runAnalysis();
+  renderCalculations();
 }
 
 function runAnalysis() {
@@ -438,6 +644,57 @@ function runAnalysis() {
   renderList($("signalsTab"), Object.entries(best.signals));
   renderScores($("scoresTab"), scoreCounts);
   renderTable($("matchesTab"), best.sample);
+  renderCalculations();
+}
+
+function renderCalculations() {
+  const o1 = toNumber($("o1").value);
+  const ox = toNumber($("ox").value);
+  const o2 = toNumber($("o2").value);
+  const container = $("calculationSummary");
+
+  if (![o1, ox, o2].every((value) => Number.isFinite(value) && value > 1)) {
+    container.innerHTML = `<article class="calc-card"><span>Erreur</span><strong>Cotes invalides</strong></article>`;
+    return;
+  }
+
+  const raw = [
+    ["Domicile 1", 1 / o1],
+    ["Nul N", 1 / ox],
+    ["Extérieur 2", 1 / o2],
+  ];
+  const total = raw.reduce((sum, [, value]) => sum + value, 0);
+  const margin = total - 1;
+  const normalized = raw.map(([name, value]) => [name, value / total]);
+
+  container.innerHTML = `
+    <article class="calc-card">
+      <span>Probabilité brute domicile</span>
+      <strong>${(raw[0][1] * 100).toFixed(1)} %</strong>
+    </article>
+    <article class="calc-card">
+      <span>Probabilité brute nul</span>
+      <strong>${(raw[1][1] * 100).toFixed(1)} %</strong>
+    </article>
+    <article class="calc-card">
+      <span>Probabilité brute extérieur</span>
+      <strong>${(raw[2][1] * 100).toFixed(1)} %</strong>
+    </article>
+    <article class="calc-card">
+      <span>Marge incluse</span>
+      <strong>${(margin * 100).toFixed(1)} %</strong>
+    </article>
+    ${normalized
+      .map(
+        ([name, value]) => `
+          <article class="calc-card">
+            <span>${escapeHtml(name)} normalisé</span>
+            <strong>${(value * 100).toFixed(1)} %</strong>
+          </article>
+        `,
+      )
+      .join("")}
+  `;
 }
 
 async function downloadSeason(leagueLabel, season) {
@@ -527,22 +784,34 @@ function setupTabs() {
   });
 }
 
-async function init() {
-  $("downloadLeague").innerHTML = Object.keys(LEAGUES).map((name) => `<option>${escapeHtml(name)}</option>`).join("");
-  $("importBtn").addEventListener("click", importFiles);
-  $("downloadBtn").addEventListener("click", downloadSelected);
-  $("packBtn").addEventListener("click", downloadPack);
-  $("clearBaseBtn").addEventListener("click", async () => {
-    if (!confirm("Vider la base sauvegardée dans ce navigateur ?")) return;
-    base = [];
-    await clearSavedBase();
-    updateBaseUI();
-    $("status").textContent = "Base vidée.";
+function setupMainMenu() {
+  document.querySelectorAll(".menu-button").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll(".menu-button").forEach((item) => item.classList.remove("active"));
+      button.classList.add("active");
+      ["historique", "simulation", "calcul"].forEach((view) => {
+        $(`${view}View`).classList.toggle("hidden", view !== button.dataset.view);
+      });
+      if (button.dataset.view === "calcul") renderCalculations();
+    });
   });
-  ["championshipFilter", "o1", "ox", "o2"].forEach((id) => $(id).addEventListener("input", runAnalysis));
+}
+
+async function init() {
+  $("reloadBaseBtn").addEventListener("click", loadBaseFromSupabase);
+  ["championshipFilter", "o1", "ox", "o2"].forEach((id) =>
+    $(id).addEventListener("input", () => {
+      runAnalysis();
+      renderCalculations();
+    }),
+  );
+  ["historySearchTeam", "historySearchLeague", "historySearchSeason", "historySearchResult"].forEach((id) =>
+    $(id).addEventListener("input", runHistorySearch),
+  );
   setupTabs();
-  base = addMissingCalculatedColumns(await getSavedBase());
+  setupMainMenu();
   updateBaseUI();
+  await loadBaseFromSupabase();
 }
 
 init().catch((error) => {
