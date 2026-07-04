@@ -544,10 +544,16 @@ function renderHistoryChart(rows) {
 }
 
 function updateHistorySearchFilters() {
-  const leagues = ["Tous", ...new Set(base.map((row) => row.Championnat).filter(Boolean).sort())];
-  const seasons = ["Toutes", ...new Set(base.map((row) => row.Season).filter(Boolean).sort().reverse())];
+  const team = $("historySearchTeam").value.trim().toLowerCase();
   const currentLeague = $("historySearchLeague").value || "Tous";
   const currentSeason = $("historySearchSeason").value || "Toutes";
+  const teamRows = team
+    ? base.filter((row) => row.Home.toLowerCase().includes(team) || row.Away.toLowerCase().includes(team))
+    : base;
+  const leagueBaseRows = currentSeason !== "Toutes" ? teamRows.filter((row) => row.Season === currentSeason) : teamRows;
+  const seasonBaseRows = currentLeague !== "Tous" ? teamRows.filter((row) => row.Championnat === currentLeague) : teamRows;
+  const leagues = ["Tous", ...new Set(leagueBaseRows.map((row) => row.Championnat).filter(Boolean).sort())];
+  const seasons = ["Toutes", ...new Set(seasonBaseRows.map((row) => row.Season).filter(Boolean).sort().reverse())];
 
   $("historySearchLeague").innerHTML = leagues.map((name) => `<option>${escapeHtml(name)}</option>`).join("");
   $("historySearchSeason").innerHTML = seasons.map((season) => `<option>${escapeHtml(season)}</option>`).join("");
@@ -556,6 +562,7 @@ function updateHistorySearchFilters() {
 }
 
 function runHistorySearch() {
+  updateHistorySearchFilters();
   const team = $("historySearchTeam").value.trim().toLowerCase();
   const league = $("historySearchLeague").value || "Tous";
   const season = $("historySearchSeason").value || "Toutes";
@@ -596,7 +603,6 @@ function updateBaseUI() {
           })
           .join("")
       : `<div class="line-item"><span>Aucune donnée chargée</span><strong>0</strong></div>`;
-  updateHistorySearchFilters();
   runHistorySearch();
   runAnalysis();
   renderCalculations();
