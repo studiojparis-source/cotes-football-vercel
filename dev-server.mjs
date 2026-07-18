@@ -75,7 +75,8 @@ function liveDateRange(period) {
   const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
   if (period === "today") return { dateFrom: isoDate(start), dateTo: isoDate(start) };
   if (period === "week") return { dateFrom: isoDate(start), dateTo: isoDate(addDays(start, 7)) };
-  return { dateFrom: isoDate(addDays(start, -14)), dateTo: isoDate(addDays(start, 14)) };
+  if (period === "past-week") return { dateFrom: isoDate(addDays(start, -7)), dateTo: isoDate(start) };
+  return { dateFrom: isoDate(addDays(start, -5)), dateTo: isoDate(addDays(start, 5)) };
 }
 
 async function proxyLiveMatches(req, res) {
@@ -95,7 +96,9 @@ async function proxyLiveMatches(req, res) {
   }
 
   const url = new URL(req.url, `http://localhost:${port}`);
-  const period = ["today", "week", "all"].includes(url.searchParams.get("period")) ? url.searchParams.get("period") : "week";
+  const period = ["today", "week", "past-week", "all"].includes(url.searchParams.get("period"))
+    ? url.searchParams.get("period")
+    : "week";
   const status = url.searchParams.get("status") || "SCHEDULED";
   const { dateFrom, dateTo } = liveDateRange(period);
   const allowedStatuses = new Set(["SCHEDULED", "TIMED", "IN_PLAY", "PAUSED", "FINISHED"]);

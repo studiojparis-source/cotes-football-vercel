@@ -1,4 +1,4 @@
-const ALLOWED_PERIODS = new Set(["today", "week", "all"]);
+const ALLOWED_PERIODS = new Set(["today", "week", "past-week", "all"]);
 
 function isoDate(date) {
   return date.toISOString().slice(0, 10);
@@ -19,7 +19,10 @@ function dateRange(period) {
   if (period === "week") {
     return { dateFrom: isoDate(start), dateTo: isoDate(addDays(start, 7)) };
   }
-  return { dateFrom: isoDate(addDays(start, -14)), dateTo: isoDate(addDays(start, 14)) };
+  if (period === "past-week") {
+    return { dateFrom: isoDate(addDays(start, -7)), dateTo: isoDate(start) };
+  }
+  return { dateFrom: isoDate(addDays(start, -5)), dateTo: isoDate(addDays(start, 5)) };
 }
 
 function normalizeMatch(match) {

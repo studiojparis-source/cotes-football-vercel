@@ -807,7 +807,7 @@ function renderDashboard() {
           `,
         )
         .join("")
-      : `<p class="empty-inline">Aucun match à venir trouvé pour cette période.</p>`;
+      : `<p class="empty-inline">Aucun match à venir trouvé par football-data.org sur cette période. L'API gratuite affiche seulement certaines compétitions, donc en période creuse il peut y avoir 0 match.</p>`;
   }
 
   finishedContainer.innerHTML = liveMatchesState.loading
@@ -869,7 +869,7 @@ function renderDashboard() {
         </tbody>
       </table>
     `
-    : `<p class="empty-inline">Aucun match fini trouvé dans la base pour cette période. Essaie Semaine ou Tous. Les matchs récents comme France - Espagne apparaîtront ici seulement s'ils sont présents dans la base Supabase.</p>`;
+    : `<p class="empty-inline">Aucun match fini trouvé pour cette période. L'API gratuite ne couvre pas tous les matchs, et l'historique Supabase prend le relais seulement pour les saisons déjà chargées.</p>`;
 }
 
 const COLUMN_HELP = {
@@ -1297,8 +1297,8 @@ async function downloadPack() {
   }
 }
 
-async function fetchLiveMatches(status) {
-  const response = await fetch(`/api/live-matches?period=all&status=${encodeURIComponent(status)}`);
+async function fetchLiveMatches(status, period) {
+  const response = await fetch(`/api/live-matches?period=${encodeURIComponent(period)}&status=${encodeURIComponent(status)}`);
   const payload = await response.json();
   if (!response.ok) {
     throw new Error(payload.error || `Football-data ${response.status}`);
@@ -1315,8 +1315,8 @@ async function loadLiveMatches() {
   renderDashboard();
   try {
     const [upcomingPayload, finishedPayload] = await Promise.all([
-      fetchLiveMatches("SCHEDULED,TIMED,IN_PLAY,PAUSED"),
-      fetchLiveMatches("FINISHED"),
+      fetchLiveMatches("SCHEDULED,TIMED,IN_PLAY,PAUSED", "week"),
+      fetchLiveMatches("FINISHED", "past-week"),
     ]);
     const configured = upcomingPayload.configured !== false && finishedPayload.configured !== false;
     liveMatchesState = {
