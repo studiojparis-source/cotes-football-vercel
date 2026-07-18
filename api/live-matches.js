@@ -37,6 +37,22 @@ function normalizeMatch(match) {
   };
 }
 
+async function fetchMatches({ token, dateFrom, dateTo, status }) {
+  const params = new URLSearchParams({ dateFrom, dateTo, status });
+  const response = await fetch(`https://api.football-data.org/v4/matches?${params.toString()}`, {
+    headers: { "X-Auth-Token": token },
+  });
+  if (!response.ok) {
+    const detail = await response.text();
+    const error = new Error(`Football-data ${response.status}`);
+    error.status = response.status;
+    error.detail = detail;
+    throw error;
+  }
+  const payload = await response.json();
+  return payload.matches || [];
+}
+
 module.exports = async function handler(req, res) {
   const token = process.env.FOOTBALL_DATA_TOKEN;
   if (!token) {
@@ -56,33 +72,28 @@ module.exports = async function handler(req, res) {
     .map((item) => item.trim().toUpperCase())
     .filter((item) => allowedStatuses.has(item));
   const { dateFrom, dateTo } = dateRange(period);
-  const params = new URLSearchParams({
-    dateFrom,
-    dateTo,
-    status: statuses.length ? statuses.join(",") : "SCHEDULED",
-  });
 
-  const response = await fetch(`https://api.football-data.org/v4/matches?${params.toString()}`, {
-    headers: { "X-Auth-Token": token },
-  });
-
-  if (!response.ok) {
-    const detail = await response.text();
-    res.status(response.status).json({
+  try {
+    const matchesByStatus = await Promise.all(
+      (statuses.length ? statuses : ["SCHEDULED"]).map((singleStatus) =>
+        fetchMatches({ token, dateFrom, dateTo, status: singleStatus }),
+      ),
+    );
+    const matches = matchesByStatus.flat();
+    const uniqueMatches = [...new Map(matches.map((match) => [match.id, match])).values()];
+    res.setHeader("cache-control", "s-maxage=300, stale-while-revalidate=900");
+    res.status(200).json({
       configured: true,
-      error: `Football-data ${response.status}`,
-      detail,
+      dateFrom,
+      dateTo,
+      matches: uniqueMatches.map(normalizeMatch),
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({
+      configured: true,
+      error: error.message,
+      detail: error.detail || "",
       matches: [],
     });
-    return;
   }
-
-  const payload = await response.json();
-  res.setHeader("cache-control", "s-maxage=300, stale-while-revalidate=900");
-  res.status(200).json({
-    configured: true,
-    dateFrom,
-    dateTo,
-    matches: (payload.matches || []).map(normalizeMatch),
-  });
 };

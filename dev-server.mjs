@@ -98,37 +98,52 @@ async function proxyLiveMatches(req, res) {
   const period = ["today", "week", "all"].includes(url.searchParams.get("period")) ? url.searchParams.get("period") : "week";
   const status = url.searchParams.get("status") || "SCHEDULED";
   const { dateFrom, dateTo } = liveDateRange(period);
-  const remoteParams = new URLSearchParams({ dateFrom, dateTo, status });
-  const response = await fetch(`https://api.football-data.org/v4/matches?${remoteParams.toString()}`, {
-    headers: { "X-Auth-Token": token },
-  });
+  const allowedStatuses = new Set(["SCHEDULED", "TIMED", "IN_PLAY", "PAUSED", "FINISHED"]);
+  const statuses = status
+    .split(",")
+    .map((item) => item.trim().toUpperCase())
+    .filter((item) => allowedStatuses.has(item));
 
-  if (!response.ok) {
+  try {
+    const responses = await Promise.all(
+      (statuses.length ? statuses : ["SCHEDULED"]).map(async (singleStatus) => {
+        const remoteParams = new URLSearchParams({ dateFrom, dateTo, status: singleStatus });
+        const response = await fetch(`https://api.football-data.org/v4/matches?${remoteParams.toString()}`, {
+          headers: { "X-Auth-Token": token },
+        });
+        if (!response.ok) {
+          const error = new Error(`Football-data ${response.status}`);
+          error.status = response.status;
+          throw error;
+        }
+        const payload = await response.json();
+        return payload.matches || [];
+      }),
+    );
+    const uniqueMatches = [...new Map(responses.flat().map((match) => [match.id, match])).values()];
+    const matches = uniqueMatches.map((match) => ({
+      id: String(match.id),
+      utcDate: match.utcDate,
+      status: match.status,
+      competition: match.competition?.name || "",
+      home: match.homeTeam?.name || "",
+      away: match.awayTeam?.name || "",
+      score: {
+        home: match.score?.fullTime?.home,
+        away: match.score?.fullTime?.away,
+      },
+    }));
+    send(res, 200, JSON.stringify({ configured: true, dateFrom, dateTo, matches }), {
+      "content-type": "application/json; charset=utf-8",
+    });
+  } catch (error) {
     send(
       res,
-      response.status,
-      JSON.stringify({ configured: true, error: `Football-data ${response.status}`, matches: [] }),
+      error.status || 500,
+      JSON.stringify({ configured: true, error: error.message, matches: [] }),
       { "content-type": "application/json; charset=utf-8" },
     );
-    return;
   }
-
-  const payload = await response.json();
-  const matches = (payload.matches || []).map((match) => ({
-    id: String(match.id),
-    utcDate: match.utcDate,
-    status: match.status,
-    competition: match.competition?.name || "",
-    home: match.homeTeam?.name || "",
-    away: match.awayTeam?.name || "",
-    score: {
-      home: match.score?.fullTime?.home,
-      away: match.score?.fullTime?.away,
-    },
-  }));
-  send(res, 200, JSON.stringify({ configured: true, dateFrom, dateTo, matches }), {
-    "content-type": "application/json; charset=utf-8",
-  });
 }
 
 await loadLocalEnv();
