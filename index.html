@@ -21,13 +21,78 @@
     </header>
 
     <nav class="main-menu" aria-label="Menu principal">
-      <button class="menu-button active" type="button" data-view="historique">Base Historique</button>
+      <button class="menu-button active" type="button" data-view="dashboard">Tableau de bord</button>
       <button class="menu-button" type="button" data-view="simulation">Simulation</button>
-      <button class="menu-button" type="button" data-view="calcul">Calcul</button>
+      <button class="menu-button" type="button" data-view="historique">Base historique</button>
+      <button class="menu-button" type="button" data-view="calcul">Méthode</button>
     </nav>
 
     <main>
-      <section id="historiqueView" class="app-view view-grid">
+      <section id="dashboardView" class="app-view dashboard-view">
+        <section class="panel match-entry">
+          <div class="section-title">
+            <h2>Ajouter un match à analyser</h2>
+            <span class="source-badge">Cotes manuelles</span>
+          </div>
+          <div class="dashboard-form">
+            <label>
+              Date
+              <input id="matchDate" type="date" />
+            </label>
+            <label>
+              Championnat
+              <select id="matchLeague"></select>
+            </label>
+            <label>
+              Domicile
+              <input id="matchHome" list="teamSuggestions" placeholder="Ex : Paris SG" />
+            </label>
+            <label>
+              Extérieur
+              <input id="matchAway" list="teamSuggestions" placeholder="Ex : Lyon" />
+            </label>
+            <label>
+              Cote 1
+              <input id="matchO1" type="number" min="1.01" step="0.01" value="1.80" />
+            </label>
+            <label>
+              Cote N
+              <input id="matchOX" type="number" min="1.01" step="0.01" value="3.40" />
+            </label>
+            <label>
+              Cote 2
+              <input id="matchO2" type="number" min="1.01" step="0.01" value="4.50" />
+            </label>
+            <button id="addMatchBtn" type="button">Ajouter au calendrier</button>
+          </div>
+          <datalist id="teamSuggestions"></datalist>
+        </section>
+
+        <section class="panel">
+          <div class="section-title">
+            <h2>Matchs à suivre</h2>
+            <div class="segment">
+              <button class="period-button active" type="button" data-period="today">Aujourd'hui</button>
+              <button class="period-button" type="button" data-period="week">Semaine</button>
+              <button class="period-button" type="button" data-period="all">Tous</button>
+            </div>
+          </div>
+          <div id="fixtureCalendar" class="fixture-calendar"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-title">
+            <h2>Prédictions et suivi</h2>
+            <div class="section-actions">
+              <button id="applyVisibleBtn" class="ghost" type="button">Appliquer les cotes visibles</button>
+              <span id="predictionCount" class="source-badge">0 match</span>
+            </div>
+          </div>
+          <div id="predictionTable" class="table-wrap tracking-table"></div>
+        </section>
+      </section>
+
+      <section id="historiqueView" class="app-view view-grid hidden">
         <section class="panel controls">
           <div class="section-title">
             <h2>Base Historique</h2>
@@ -93,37 +158,33 @@
       </section>
 
       <section id="simulationView" class="app-view analysis hidden">
-        <section class="panel">
+        <div class="hidden">
+          <select id="championshipFilter"></select>
+          <select id="homeTeamFilter"></select>
+          <select id="awayTeamFilter"></select>
+        </div>
+
+        <section class="panel simulation-input-card">
           <div class="section-title">
             <h2>Simulation</h2>
-            <span class="rule">1.30 max 3 matchs | 1.70 max 2 matchs</span>
+            <span class="rule">Entre seulement les cotes</span>
           </div>
+          <p class="panel-copy">Saisis les trois cotes du match. L'app compare ces cotes à toute la base historique et sort directement quoi jouer.</p>
 
-          <div class="grid inputs">
+          <div class="odds-entry-grid">
             <label>
-              Championnat à analyser
-              <select id="championshipFilter"></select>
-            </label>
-            <label>
-              Équipe domicile
-              <select id="homeTeamFilter"></select>
-            </label>
-            <label>
-              Équipe extérieur
-              <select id="awayTeamFilter"></select>
-            </label>
-            <label>
-              Cote domicile 1
+              Cote 1
               <input id="o1" type="number" min="1.01" step="0.01" value="1.80" />
             </label>
             <label>
-              Cote nul N
+              Cote N
               <input id="ox" type="number" min="1.01" step="0.01" value="3.40" />
             </label>
             <label>
-              Cote extérieur 2
+              Cote 2
               <input id="o2" type="number" min="1.01" step="0.01" value="4.50" />
             </label>
+            <button id="applySimulationBtn" type="button">Appliquer les cotes</button>
           </div>
         </section>
 
@@ -132,6 +193,32 @@
         </section>
 
         <section id="results" class="hidden">
+          <section class="panel result-panel">
+            <div class="section-title">
+              <h2>Résultat</h2>
+              <span id="resultConfidenceBadge" class="source-badge">Confiance</span>
+            </div>
+            <div class="result-grid">
+              <article class="result-main">
+                <span>À jouer</span>
+                <strong id="resultPick">-</strong>
+                <p id="resultWhy">La recommandation apparaît après le calcul.</p>
+              </article>
+              <article>
+                <span>Matchs analysés</span>
+                <strong id="resultSampleUsed">0</strong>
+              </article>
+              <article>
+                <span>Meilleur signal</span>
+                <strong id="resultBestSignal">-</strong>
+              </article>
+              <article>
+                <span>Score fréquent</span>
+                <strong id="resultExactScore">-</strong>
+              </article>
+            </div>
+          </section>
+
           <section class="recommendation-card">
             <span>À jouer</span>
             <strong id="recommendedPick">-</strong>
@@ -165,11 +252,6 @@
               <strong id="exactScore">-</strong>
             </article>
           </div>
-
-          <section class="panel">
-            <h2>Lecture équipes</h2>
-            <div id="teamProfile" class="team-profile"></div>
-          </section>
 
           <section class="panel">
             <h2>À jouer selon les données</h2>
