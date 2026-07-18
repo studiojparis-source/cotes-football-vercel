@@ -1,14 +1,17 @@
 :root {
-  --bg: #f5f7f6;
+  --bg: #edf3f1;
   --panel: #ffffff;
-  --ink: #111827;
-  --muted: #667085;
-  --line: #d9e2dc;
-  --accent: #0f766e;
-  --accent-dark: #115e59;
+  --ink: #071512;
+  --muted: #60736d;
+  --line: #cbdad5;
+  --accent: #009b72;
+  --accent-dark: #00694f;
   --warn: #b42318;
-  --soft: #e8f4f1;
-  --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --soft: #e2f4ee;
+  --coupon: #d7f5ee;
+  --coupon-dark: #064e3b;
+  --navy: #071f1b;
+  --shadow: 0 12px 26px rgba(7, 21, 18, 0.1);
 }
 
 * {
@@ -17,7 +20,9 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  background:
+    linear-gradient(180deg, #dcebe6 0, var(--bg) 190px),
+    var(--bg);
   color: var(--ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -33,9 +38,12 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 22px clamp(16px, 4vw, 40px);
-  background: #0b1f1d;
+  padding: 18px clamp(16px, 4vw, 40px);
+  background:
+    radial-gradient(circle at 90% 20%, rgba(76, 211, 194, 0.22), transparent 28%),
+    linear-gradient(135deg, #041513 0%, #092923 100%);
   color: white;
+  border-bottom: 4px solid #43d7bd;
 }
 
 .eyebrow {
@@ -52,7 +60,8 @@ h2 {
 }
 
 h1 {
-  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-size: clamp(1.35rem, 4vw, 2.05rem);
+  font-weight: 950;
 }
 
 h2 {
@@ -62,7 +71,8 @@ h2 {
 .counter {
   min-width: 92px;
   padding: 10px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(157, 229, 220, 0.45);
+  background: rgba(255, 255, 255, 0.08);
   text-align: center;
 }
 
@@ -78,20 +88,24 @@ h2 {
 
 .main-menu {
   display: flex;
-  gap: 10px;
-  padding: 14px clamp(12px, 3vw, 32px) 0;
+  gap: 6px;
+  padding: 12px clamp(12px, 3vw, 32px) 0;
   overflow-x: auto;
 }
 
 .menu-button {
   flex: 0 0 auto;
-  background: #e9efed;
+  min-height: 38px;
+  background: #d7e4df;
   color: var(--ink);
+  border-radius: 4px 4px 0 0;
+  box-shadow: none;
 }
 
 .menu-button.active {
-  background: var(--accent);
+  background: var(--navy);
   color: white;
+  box-shadow: inset 0 -4px 0 #43d7bd;
 }
 
 main {
@@ -113,6 +127,7 @@ main {
 
 .panel {
   padding: 18px;
+  border-radius: 6px;
 }
 
 .controls {
@@ -150,7 +165,7 @@ select {
   width: 100%;
   min-height: 42px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 4px;
   background: white;
   color: var(--ink);
   padding: 9px 11px;
@@ -160,7 +175,7 @@ button,
 .file-input span {
   min-height: 42px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 4px;
   background: var(--accent);
   color: white;
   padding: 10px 13px;
@@ -179,13 +194,13 @@ button:hover,
 
 .ghost {
   min-height: 34px;
-  background: transparent;
-  border: 1px solid var(--line);
-  color: var(--ink);
+  background: var(--accent);
+  border: 1px solid var(--accent-dark);
+  color: white;
 }
 
 .ghost:hover {
-  background: #f1f5f4;
+  background: var(--accent-dark);
 }
 
 .file-input input {
@@ -240,8 +255,29 @@ button:hover,
   max-width: 820px;
 }
 
+.odds-entry-grid label {
+  color: var(--ink);
+}
+
+.odds-entry-grid input {
+  min-height: 54px;
+  border: 2px solid #9de5dc;
+  background: #e9faf6;
+  color: var(--accent-dark);
+  font-size: 1.35rem;
+  font-weight: 950;
+  text-align: center;
+}
+
+.odds-entry-grid button {
+  min-height: 54px;
+  background: var(--accent);
+  box-shadow: inset 0 -4px 0 var(--accent-dark);
+}
+
 .result-panel {
-  border-color: #9de5dc;
+  border-color: #8dd8cf;
+  background: #f8fffc;
 }
 
 .result-grid {
@@ -254,6 +290,7 @@ button:hover,
   border: 1px solid var(--line);
   background: #fbfdfc;
   padding: 14px;
+  border-radius: 4px;
 }
 
 .result-grid article span {
@@ -277,8 +314,10 @@ button:hover,
 }
 
 .result-main {
-  background: linear-gradient(135deg, #0f766e 0%, #115e59 100%) !important;
+  background: linear-gradient(135deg, #071f1b 0%, #0b3a31 100%) !important;
   color: white;
+  border-color: #43d7bd !important;
+  box-shadow: inset 0 -5px 0 #43d7bd;
 }
 
 .result-main span,
@@ -296,19 +335,13 @@ button:hover,
   gap: 18px;
 }
 
-.dashboard-form {
-  display: grid;
-  grid-template-columns: 140px minmax(170px, 1fr) repeat(2, minmax(150px, 1fr)) repeat(3, minmax(96px, 0.7fr)) minmax(160px, 0.8fr);
-  gap: 12px;
-  align-items: end;
-}
-
 .segment {
   display: inline-flex;
   gap: 6px;
   padding: 4px;
   border: 1px solid var(--line);
-  background: #f5f8f7;
+  background: #dce8e4;
+  border-radius: 4px;
 }
 
 .period-button {
@@ -319,7 +352,7 @@ button:hover,
 }
 
 .period-button.active {
-  background: var(--accent);
+  background: var(--navy);
   color: white;
 }
 
@@ -333,6 +366,8 @@ button:hover,
   border: 1px solid var(--line);
   background: #fbfdfc;
   padding: 13px;
+  border-left: 5px solid var(--accent);
+  border-radius: 4px;
 }
 
 .fixture-card span,
@@ -346,6 +381,37 @@ button:hover,
 .fixture-card strong {
   display: block;
   margin: 6px 0;
+}
+
+.live-fixture {
+  border-left-color: #43d7bd;
+}
+
+.fixture-actions {
+  margin-top: 12px;
+}
+
+.fixture-actions b {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  border: 1px solid #9de5dc;
+  background: var(--soft);
+  color: var(--accent-dark);
+  padding: 5px 8px;
+  font-size: 0.82rem;
+}
+
+.fixture-score {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.fixture-score small {
+  flex: 1 0 100%;
 }
 
 .tracking-table table {
@@ -369,7 +435,7 @@ button:hover,
   align-items: center;
   min-height: 28px;
   border: 1px solid var(--line);
-  background: #f3f6f5;
+  background: #edf3f1;
   color: var(--muted);
   padding: 4px 8px;
   font-size: 0.8rem;
@@ -377,8 +443,8 @@ button:hover,
 }
 
 .status-pill.ok {
-  border-color: #9de5bc;
-  background: #eefcf3;
+  border-color: #42c987;
+  background: #dff8e9;
   color: #166534;
 }
 
@@ -386,6 +452,24 @@ button:hover,
   border-color: #f2b8b5;
   background: #fff1f0;
   color: #b42318;
+}
+
+.api-empty {
+  border: 1px dashed #8dd8cf;
+  background: #f4fffb;
+  padding: 14px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.api-empty strong {
+  display: block;
+  color: var(--accent-dark);
+  margin-bottom: 6px;
+}
+
+.api-empty p {
+  margin: 0;
 }
 
 .grid.inputs {
@@ -799,8 +883,8 @@ td {
 
 th {
   position: relative;
-  background: #eef3f1;
-  color: #344054;
+  background: var(--navy);
+  color: white;
   overflow: visible;
 }
 
@@ -876,7 +960,6 @@ th {
   .match-of-day-grid,
   .odds-entry-grid,
   .result-grid,
-  .dashboard-form,
   .fixture-calendar,
   .search-grid,
   .metrics,

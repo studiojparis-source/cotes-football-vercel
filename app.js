@@ -20,7 +20,16 @@ const SUPABASE_PAGE_SIZE = 1000;
 
 let base = [];
 let trackedMatches = [];
-let dashboardPeriod = "today";
+let upcomingPeriod = "today";
+let finishedPeriod = "all";
+let liveMatchesState = {
+  configured: null,
+  loading: false,
+  error: "",
+  upcoming: [],
+  finished: [],
+};
+const historicalPredictionCache = new Map();
 
 const $ = (id) => document.getElementById(id);
 
@@ -548,6 +557,28 @@ function addDaysISO(days) {
   return date.toISOString().slice(0, 10);
 }
 
+function parseMatchDate(value) {
+  if (!value) return null;
+  const text = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  const parts = text.split(/[/-]/).map((part) => part.trim());
+  if (parts.length === 3) {
+    const [day, month, yearRaw] = parts;
+    const year = yearRaw.length === 2 ? `20${yearRaw}` : yearRaw;
+    if (day.length <= 2 && month.length <= 2 && year.length === 4) {
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+  }
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+}
+
+function addDaysToISO(isoDate, days) {
+  const date = new Date(`${isoDate}T00:00:00`);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 function loadTrackedMatches() {
   try {
     trackedMatches = JSON.parse(localStorage.getItem("trackedMatches") || "[]");
@@ -560,16 +591,58 @@ function saveTrackedMatches() {
   localStorage.setItem("trackedMatches", JSON.stringify(trackedMatches));
 }
 
-function filteredTrackedMatches() {
+function formatMatchDateTime(value) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function liveMatchDateISO(match) {
+  return match.utcDate ? new Date(match.utcDate).toISOString().slice(0, 10) : "";
+}
+
+function footballDataConfigMessage() {
+  return `
+    <div class="api-empty">
+      <strong>Matchs réels pas encore connectés</strong>
+      <p>Il faut ajouter la clé gratuite football-data.org dans Vercel avec le nom <b>FOOTBALL_DATA_TOKEN</b>. Après ça, les matchs à venir et les résultats récents s'affichent ici automatiquement.</p>
+    </div>
+  `;
+}
+
+function filteredTrackedMatches(period) {
   const today = todayISO();
   const weekEnd = addDaysISO(7);
   return trackedMatches
     .filter((match) => {
-      if (dashboardPeriod === "today") return match.date === today;
-      if (dashboardPeriod === "week") return match.date >= today && match.date <= weekEnd;
+      if (period === "today") return match.date === today;
+      if (period === "week") return match.date >= today && match.date <= weekEnd;
       return true;
     })
     .sort((a, b) => `${a.date} ${a.home}`.localeCompare(`${b.date} ${b.home}`, "fr"));
+}
+
+function filterLiveMatches(matches, period, direction) {
+  const today = todayISO();
+  const weekEnd = addDaysISO(7);
+  const weekStart = addDaysToISO(today, -7);
+  return matches
+    .filter((match) => {
+      const date = liveMatchDateISO(match);
+      if (!date) return false;
+      if (period === "today") return date === today;
+      if (period === "week") return direction === "past" ? date >= weekStart && date <= today : date >= today && date <= weekEnd;
+      return true;
+    })
+    .sort((a, b) => {
+      const first = String(a.utcDate || "");
+      const second = String(b.utcDate || "");
+      return direction === "past" ? second.localeCompare(first) : first.localeCompare(second);
+    });
 }
 
 function recommendationFromBest(best) {
@@ -624,13 +697,49 @@ function isPredictionCorrect(pick, actual) {
   return checks[pick] ? "Correct" : "Perdu";
 }
 
-function renderMatchLeagueOptions() {
-  const select = $("matchLeague");
-  if (!select) return;
-  const leagues = ["Tous", ...new Set(base.map((row) => row.Championnat).filter(Boolean).sort())];
-  const current = select.value || "Tous";
-  select.innerHTML = leagues.map((league) => `<option>${escapeHtml(league)}</option>`).join("");
-  select.value = leagues.includes(current) ? current : "Tous";
+function actualResultLabel(actual) {
+  if (!actual || actual.homeGoals === "" || actual.awayGoals === "") return "-";
+  const homeGoals = Number(actual.homeGoals);
+  const awayGoals = Number(actual.awayGoals);
+  if (!Number.isFinite(homeGoals) || !Number.isFinite(awayGoals)) return "-";
+  if (homeGoals > awayGoals) return "Domicile gagne";
+  if (homeGoals < awayGoals) return "Extérieur gagne";
+  return "Match nul";
+}
+
+function actualFromHistoricalRow(row) {
+  return { homeGoals: row.FTHG, awayGoals: row.FTAG };
+}
+
+function historicalPredictionForRow(row) {
+  const key = [row.Championnat, row.O1, row.OX, row.O2].join("|");
+  if (historicalPredictionCache.has(key)) return historicalPredictionCache.get(key);
+  const rows = row.Championnat ? base.filter((item) => item.Championnat === row.Championnat) : base;
+  const sample = computeSimilar(rows, row.O1, row.OX, row.O2, Math.min(100, rows.length));
+  if (!sample.length) return null;
+  const info = signalStrength(sample);
+  const prediction = recommendationFromBest({
+    ...info,
+    sample,
+    confidence: confidenceLabel(sample.length, info.bestPct, info.strongCount, rows.length),
+  });
+  historicalPredictionCache.set(key, prediction);
+  return prediction;
+}
+
+function filteredHistoricalFinished(period) {
+  const today = todayISO();
+  const weekStart = addDaysToISO(today, -7);
+  return base
+    .map((row) => ({ ...row, DateISO: parseMatchDate(row.Date) }))
+    .filter((row) => row.DateISO && Number.isFinite(row.FTHG) && Number.isFinite(row.FTAG) && row.O1 > 1 && row.OX > 1 && row.O2 > 1)
+    .filter((row) => {
+      if (period === "today") return row.DateISO === today;
+      if (period === "week") return row.DateISO >= weekStart && row.DateISO <= today;
+      return true;
+    })
+    .sort((a, b) => b.DateISO.localeCompare(a.DateISO))
+    .slice(0, 30);
 }
 
 function renderTeamSuggestions() {
@@ -643,62 +752,116 @@ function renderTeamSuggestions() {
 }
 
 function renderDashboard() {
-  renderMatchLeagueOptions();
   renderTeamSuggestions();
-  const calendar = $("fixtureCalendar");
-  const table = $("predictionTable");
-  if (!calendar || !table) return;
+  const upcomingContainer = $("upcomingMatches");
+  const finishedContainer = $("finishedMatches");
+  if (!upcomingContainer || !finishedContainer) return;
 
-  const rows = filteredTrackedMatches();
-  $("predictionCount").textContent = `${rows.length} match${rows.length > 1 ? "s" : ""}`;
-  calendar.innerHTML = rows.length
-    ? rows
+  const liveUpcoming = filterLiveMatches(liveMatchesState.upcoming, upcomingPeriod, "future");
+  const manualUpcoming = filteredTrackedMatches(upcomingPeriod).filter((match) => !match.actual || match.actual.homeGoals === "" || match.actual.awayGoals === "");
+  const liveFinished = filterLiveMatches(liveMatchesState.finished, finishedPeriod, "past");
+  const historicalFinished = filteredHistoricalFinished(finishedPeriod);
+  const finished = liveFinished.length ? liveFinished.slice(0, 40) : historicalFinished;
+  $("finishedCount").textContent = `${finished.length} match${finished.length > 1 ? "s" : ""}`;
+
+  if (liveMatchesState.loading) {
+    upcomingContainer.innerHTML = `<p class="empty-inline">Chargement des matchs du jour...</p>`;
+  } else if (liveMatchesState.configured === false) {
+    upcomingContainer.innerHTML = footballDataConfigMessage();
+  } else if (liveMatchesState.error) {
+    upcomingContainer.innerHTML = `<p class="empty-inline">Impossible de charger les matchs en ligne : ${escapeHtml(liveMatchesState.error)}</p>`;
+  } else if (liveUpcoming.length) {
+    upcomingContainer.innerHTML = liveUpcoming
+      .slice(0, 36)
+      .map(
+        (match) => `
+          <article class="fixture-card live-fixture">
+            <span>${escapeHtml(formatMatchDateTime(match.utcDate))} · ${escapeHtml(match.competition || "Compétition")}</span>
+            <strong>${escapeHtml(match.home)} - ${escapeHtml(match.away)}</strong>
+            <small>Cotes non fournies par l'API gratuite</small>
+            <div class="fixture-actions">
+              <button class="ghost send-to-simulation" type="button">Entrer les cotes en simulation</button>
+            </div>
+          </article>
+        `,
+      )
+      .join("");
+  } else {
+    upcomingContainer.innerHTML = manualUpcoming.length
+      ? manualUpcoming
         .map(
           (match) => `
             <article class="fixture-card">
               <span>${escapeHtml(match.date)} · ${escapeHtml(match.league || "Tous championnats")}</span>
               <strong>${escapeHtml(match.home)} - ${escapeHtml(match.away)}</strong>
               <small>1 ${match.o1.toFixed(2)} · N ${match.ox.toFixed(2)} · 2 ${match.o2.toFixed(2)}</small>
+              <div class="fixture-actions">
+                ${match.prediction ? `<b>${escapeHtml(match.prediction.pick)} · ${match.prediction.pct} %</b>` : `<button class="ghost apply-match" type="button" data-id="${match.id}">Appliquer les cotes</button>`}
+              </div>
+              <div class="fixture-score">
+                <small>Score final</small>
+                <input class="score-input" data-id="${match.id}" data-score="home" type="number" min="0" value="${escapeHtml(match.actual?.homeGoals ?? "")}" placeholder="D" />
+                <input class="score-input" data-id="${match.id}" data-score="away" type="number" min="0" value="${escapeHtml(match.actual?.awayGoals ?? "")}" placeholder="E" />
+              </div>
             </article>
           `,
         )
         .join("")
-    : `<p class="empty-inline">Aucun match dans cette période. Ajoute les matchs et leurs cotes au-dessus.</p>`;
+      : `<p class="empty-inline">Aucun match à venir trouvé pour cette période.</p>`;
+  }
 
-  table.innerHTML = rows.length
+  finishedContainer.innerHTML = liveMatchesState.loading
+    ? `<p class="empty-inline">Chargement des résultats récents...</p>`
+    : liveMatchesState.configured === false
+      ? footballDataConfigMessage()
+      : finished.length
     ? `
       <table>
         <thead>
           <tr>
-            <th>Date</th>
-            <th>Match</th>
+            <th>Historique du match</th>
             <th>Cotes</th>
-            <th>Prédiction</th>
-            <th>%</th>
+            <th>Score</th>
+            <th>Résultat</th>
+            <th>Ma prédiction</th>
             <th>Confiance</th>
-            <th>Résultat réel</th>
             <th>Statut</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          ${rows
+          ${finished
             .map((match) => {
-              const status = isPredictionCorrect(match.prediction?.pick, match.actual);
+              if (match.utcDate) {
+                const homeGoals = match.score?.home;
+                const awayGoals = match.score?.away;
+                const actual = { homeGoals, awayGoals };
+                return `
+                  <tr>
+                    <td><strong>${escapeHtml(match.home)} - ${escapeHtml(match.away)}</strong><br><small>${escapeHtml(formatMatchDateTime(match.utcDate))} · ${escapeHtml(match.competition || "Compétition")}</small></td>
+                    <td><small>Non fournies<br>par l'API gratuite</small></td>
+                    <td>${Number.isFinite(homeGoals) && Number.isFinite(awayGoals) ? `${homeGoals}-${awayGoals}` : "-"}</td>
+                    <td>${escapeHtml(actualResultLabel(actual))}</td>
+                    <td><small>À calculer si on ajoute les cotes</small></td>
+                    <td>-</td>
+                    <td><span class="status-pill">Résultat réel</span></td>
+                    <td></td>
+                  </tr>
+                `;
+              }
+              const prediction = historicalPredictionForRow(match);
+              const actual = actualFromHistoricalRow(match);
+              const status = isPredictionCorrect(prediction?.pick, actual);
               return `
                 <tr>
-                  <td>${escapeHtml(match.date)}</td>
-                  <td><strong>${escapeHtml(match.home)} - ${escapeHtml(match.away)}</strong><br><small>${escapeHtml(match.league || "Tous")}</small></td>
-                  <td>1 ${match.o1.toFixed(2)}<br>N ${match.ox.toFixed(2)}<br>2 ${match.o2.toFixed(2)}</td>
-                  <td>${match.prediction ? escapeHtml(match.prediction.pick) : `<button class="ghost apply-match" type="button" data-id="${match.id}">Appliquer les cotes</button>`}</td>
-                  <td>${match.prediction ? `${match.prediction.pct} %` : "-"}</td>
-                  <td>${match.prediction ? escapeHtml(match.prediction.confidence) : "-"}</td>
-                  <td>
-                    <input class="score-input" data-id="${match.id}" data-score="home" type="number" min="0" value="${escapeHtml(match.actual?.homeGoals ?? "")}" placeholder="D" />
-                    <input class="score-input" data-id="${match.id}" data-score="away" type="number" min="0" value="${escapeHtml(match.actual?.awayGoals ?? "")}" placeholder="E" />
-                  </td>
-                  <td><span class="status-pill ${status === "Correct" ? "ok" : status === "Perdu" ? "lost" : ""}">${escapeHtml(status || "En attente")}</span></td>
-                  <td><button class="ghost remove-match" type="button" data-id="${match.id}">Supprimer</button></td>
+                  <td><strong>${escapeHtml(match.Home)} - ${escapeHtml(match.Away)}</strong><br><small>${escapeHtml(match.DateISO)} · ${escapeHtml(match.Championnat || "Tous")}</small></td>
+                  <td>1 ${match.O1.toFixed(2)}<br>N ${match.OX.toFixed(2)}<br>2 ${match.O2.toFixed(2)}</td>
+                  <td>${escapeHtml(match.Score)}</td>
+                  <td>${escapeHtml(actualResultLabel(actual))}</td>
+                  <td>${prediction ? `${escapeHtml(prediction.pick)}<br><small>${prediction.pct} %</small>` : "-"}</td>
+                  <td>${prediction ? escapeHtml(prediction.confidence) : "-"}</td>
+                  <td><span class="status-pill ${status === "Correct" ? "ok" : status === "Perdu" ? "lost" : ""}">${escapeHtml(status === "Correct" ? "Correcte" : status === "Perdu" ? "Mauvaise" : status || "En attente")}</span></td>
+                  <td></td>
                 </tr>
               `;
             })
@@ -706,7 +869,7 @@ function renderDashboard() {
         </tbody>
       </table>
     `
-    : `<p class="empty-inline">Le suivi apparaîtra ici dès que tu ajoutes un match.</p>`;
+    : `<p class="empty-inline">Aucun match fini trouvé dans la base pour cette période. Essaie Semaine ou Tous. Les matchs récents comme France - Espagne apparaîtront ici seulement s'ils sont présents dans la base Supabase.</p>`;
 }
 
 const COLUMN_HELP = {
@@ -1134,6 +1297,47 @@ async function downloadPack() {
   }
 }
 
+async function fetchLiveMatches(status) {
+  const response = await fetch(`/api/live-matches?period=all&status=${encodeURIComponent(status)}`);
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload.error || `Football-data ${response.status}`);
+  }
+  return payload;
+}
+
+async function loadLiveMatches() {
+  liveMatchesState = {
+    ...liveMatchesState,
+    loading: true,
+    error: "",
+  };
+  renderDashboard();
+  try {
+    const [upcomingPayload, finishedPayload] = await Promise.all([
+      fetchLiveMatches("SCHEDULED,TIMED,IN_PLAY,PAUSED"),
+      fetchLiveMatches("FINISHED"),
+    ]);
+    const configured = upcomingPayload.configured !== false && finishedPayload.configured !== false;
+    liveMatchesState = {
+      configured,
+      loading: false,
+      error: upcomingPayload.error || finishedPayload.error || "",
+      upcoming: configured ? upcomingPayload.matches || [] : [],
+      finished: configured ? finishedPayload.matches || [] : [],
+    };
+  } catch (error) {
+    liveMatchesState = {
+      configured: true,
+      loading: false,
+      error: error.message,
+      upcoming: [],
+      finished: [],
+    };
+  }
+  renderDashboard();
+}
+
 function setupTabs() {
   document.querySelectorAll(".tab").forEach((button) => {
     button.addEventListener("click", () => {
@@ -1158,50 +1362,18 @@ function setupMainMenu() {
 }
 
 function setupDashboard() {
-  $("matchDate").value = todayISO();
-  $("addMatchBtn").addEventListener("click", () => {
-    const match = {
-      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      date: $("matchDate").value || todayISO(),
-      league: $("matchLeague").value || "Tous",
-      home: $("matchHome").value.trim(),
-      away: $("matchAway").value.trim(),
-      o1: toNumber($("matchO1").value),
-      ox: toNumber($("matchOX").value),
-      o2: toNumber($("matchO2").value),
-      prediction: null,
-      actual: null,
-    };
-    if (!match.home || !match.away || ![match.o1, match.ox, match.o2].every((value) => Number.isFinite(value) && value > 1)) {
-      $("status").textContent = "Complète le match et les trois cotes avant d'ajouter.";
-      return;
-    }
-    trackedMatches.unshift(match);
-    saveTrackedMatches();
-    $("matchHome").value = "";
-    $("matchAway").value = "";
-    renderDashboard();
-  });
-
-  $("applyVisibleBtn").addEventListener("click", () => {
-    const visibleIds = new Set(filteredTrackedMatches().map((match) => match.id));
-    trackedMatches.forEach((match) => {
-      if (visibleIds.has(match.id)) match.prediction = analyzeOddsForMatch(match);
-    });
-    saveTrackedMatches();
-    renderDashboard();
-  });
-
   document.querySelectorAll(".period-button").forEach((button) => {
     button.addEventListener("click", () => {
-      document.querySelectorAll(".period-button").forEach((item) => item.classList.remove("active"));
+      const list = button.dataset.list || "upcoming";
+      document.querySelectorAll(`.period-button[data-list="${list}"]`).forEach((item) => item.classList.remove("active"));
       button.classList.add("active");
-      dashboardPeriod = button.dataset.period;
+      if (list === "finished") finishedPeriod = button.dataset.period;
+      else upcomingPeriod = button.dataset.period;
       renderDashboard();
     });
   });
 
-  $("predictionTable").addEventListener("click", (event) => {
+  $("dashboardView").addEventListener("click", (event) => {
     const applyButton = event.target.closest(".apply-match");
     const removeButton = event.target.closest(".remove-match");
     if (applyButton) {
@@ -1217,9 +1389,13 @@ function setupDashboard() {
       saveTrackedMatches();
       renderDashboard();
     }
+    if (event.target.closest(".send-to-simulation")) {
+      document.querySelector('.menu-button[data-view="simulation"]')?.click();
+      $("o1").focus();
+    }
   });
 
-  $("predictionTable").addEventListener("change", (event) => {
+  $("dashboardView").addEventListener("change", (event) => {
     const input = event.target.closest(".score-input");
     if (!input) return;
     const match = trackedMatches.find((item) => item.id === input.dataset.id);
@@ -1257,6 +1433,7 @@ async function init() {
   setupTabs();
   setupMainMenu();
   updateBaseUI();
+  loadLiveMatches();
   await loadBaseFromSupabase();
 }
 

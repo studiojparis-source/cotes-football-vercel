@@ -11,8 +11,8 @@
   <body>
     <header class="topbar">
       <div>
-        <p class="eyebrow">Analyse football</p>
-        <h1>Analyse des cotes</h1>
+        <p class="eyebrow">Football · cotes · pronostics</p>
+        <h1>Studio Cotes</h1>
       </div>
       <div class="counter">
         <span id="matchCount">0</span>
@@ -29,66 +29,31 @@
 
     <main>
       <section id="dashboardView" class="app-view dashboard-view">
-        <section class="panel match-entry">
-          <div class="section-title">
-            <h2>Ajouter un match à analyser</h2>
-            <span class="source-badge">Cotes manuelles</span>
-          </div>
-          <div class="dashboard-form">
-            <label>
-              Date
-              <input id="matchDate" type="date" />
-            </label>
-            <label>
-              Championnat
-              <select id="matchLeague"></select>
-            </label>
-            <label>
-              Domicile
-              <input id="matchHome" list="teamSuggestions" placeholder="Ex : Paris SG" />
-            </label>
-            <label>
-              Extérieur
-              <input id="matchAway" list="teamSuggestions" placeholder="Ex : Lyon" />
-            </label>
-            <label>
-              Cote 1
-              <input id="matchO1" type="number" min="1.01" step="0.01" value="1.80" />
-            </label>
-            <label>
-              Cote N
-              <input id="matchOX" type="number" min="1.01" step="0.01" value="3.40" />
-            </label>
-            <label>
-              Cote 2
-              <input id="matchO2" type="number" min="1.01" step="0.01" value="4.50" />
-            </label>
-            <button id="addMatchBtn" type="button">Ajouter au calendrier</button>
-          </div>
-          <datalist id="teamSuggestions"></datalist>
-        </section>
-
         <section class="panel">
           <div class="section-title">
-            <h2>Matchs à suivre</h2>
+            <h2>Matchs à venir</h2>
             <div class="segment">
-              <button class="period-button active" type="button" data-period="today">Aujourd'hui</button>
-              <button class="period-button" type="button" data-period="week">Semaine</button>
-              <button class="period-button" type="button" data-period="all">Tous</button>
+              <button class="period-button active" type="button" data-list="upcoming" data-period="today">Aujourd'hui</button>
+              <button class="period-button" type="button" data-list="upcoming" data-period="week">Semaine</button>
+              <button class="period-button" type="button" data-list="upcoming" data-period="all">Tous</button>
             </div>
           </div>
-          <div id="fixtureCalendar" class="fixture-calendar"></div>
+          <div id="upcomingMatches" class="fixture-calendar"></div>
         </section>
 
         <section class="panel">
           <div class="section-title">
-            <h2>Prédictions et suivi</h2>
+            <h2>Matchs finis</h2>
             <div class="section-actions">
-              <button id="applyVisibleBtn" class="ghost" type="button">Appliquer les cotes visibles</button>
-              <span id="predictionCount" class="source-badge">0 match</span>
+              <div class="segment">
+                <button class="period-button" type="button" data-list="finished" data-period="today">Aujourd'hui</button>
+                <button class="period-button" type="button" data-list="finished" data-period="week">Semaine</button>
+                <button class="period-button active" type="button" data-list="finished" data-period="all">Tous</button>
+              </div>
+              <span id="finishedCount" class="source-badge">0 match</span>
             </div>
           </div>
-          <div id="predictionTable" class="table-wrap tracking-table"></div>
+          <div id="finishedMatches" class="table-wrap tracking-table"></div>
         </section>
       </section>
 
@@ -310,6 +275,6 @@
       </section>
     </main>
 
-    <script src="/app.js?v=20260704-recommendation"></script>
+    <script src="/app.js?v=20260718-live-matches"></script>
   </body>
 </html>
