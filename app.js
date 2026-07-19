@@ -1340,7 +1340,7 @@ function setupMainMenu() {
     button.addEventListener("click", () => {
       document.querySelectorAll(".menu-button").forEach((item) => item.classList.remove("active"));
       button.classList.add("active");
-      ["dashboard", "historique", "simulation", "calcul"].forEach((view) => {
+      ["dashboard", "simulation", "calcul"].forEach((view) => {
         $(`${view}View`).classList.toggle("hidden", view !== button.dataset.view);
       });
       if (button.dataset.view === "calcul") renderCalculations();
