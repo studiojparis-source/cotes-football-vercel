@@ -759,9 +759,7 @@ function renderDashboard() {
 
   const liveUpcoming = filterLiveMatches(liveMatchesState.upcoming, upcomingPeriod, "future");
   const manualUpcoming = filteredTrackedMatches(upcomingPeriod).filter((match) => !match.actual || match.actual.homeGoals === "" || match.actual.awayGoals === "");
-  const liveFinished = filterLiveMatches(liveMatchesState.finished, finishedPeriod, "past");
-  const historicalFinished = filteredHistoricalFinished(finishedPeriod);
-  const finished = liveFinished.length ? liveFinished.slice(0, 40) : historicalFinished;
+  const finished = filteredHistoricalFinished(finishedPeriod);
   $("finishedCount").textContent = `${finished.length} match${finished.length > 1 ? "s" : ""}`;
 
   if (liveMatchesState.loading) {
@@ -810,17 +808,18 @@ function renderDashboard() {
       : `<p class="empty-inline">Aucun match à venir trouvé par football-data.org sur cette période. L'API gratuite affiche seulement certaines compétitions, donc en période creuse il peut y avoir 0 match.</p>`;
   }
 
-  finishedContainer.innerHTML = liveMatchesState.loading
-    ? `<p class="empty-inline">Chargement des résultats récents...</p>`
-    : liveMatchesState.configured === false
-      ? footballDataConfigMessage()
-      : finished.length
+  finishedContainer.innerHTML = finished.length
     ? `
       <table>
         <thead>
           <tr>
-            <th>Historique du match</th>
-            <th>Cotes</th>
+            <th>Date</th>
+            <th>Championnat</th>
+            <th>Domicile</th>
+            <th>Extérieur</th>
+            <th>Cote 1</th>
+            <th>Cote N</th>
+            <th>Cote 2</th>
             <th>Score</th>
             <th>Résultat</th>
             <th>Ma prédiction</th>
@@ -832,30 +831,18 @@ function renderDashboard() {
         <tbody>
           ${finished
             .map((match) => {
-              if (match.utcDate) {
-                const homeGoals = match.score?.home;
-                const awayGoals = match.score?.away;
-                const actual = { homeGoals, awayGoals };
-                return `
-                  <tr>
-                    <td><strong>${escapeHtml(match.home)} - ${escapeHtml(match.away)}</strong><br><small>${escapeHtml(formatMatchDateTime(match.utcDate))} · ${escapeHtml(match.competition || "Compétition")}</small></td>
-                    <td><small>Non fournies<br>par l'API gratuite</small></td>
-                    <td>${Number.isFinite(homeGoals) && Number.isFinite(awayGoals) ? `${homeGoals}-${awayGoals}` : "-"}</td>
-                    <td>${escapeHtml(actualResultLabel(actual))}</td>
-                    <td><small>À calculer si on ajoute les cotes</small></td>
-                    <td>-</td>
-                    <td><span class="status-pill">Résultat réel</span></td>
-                    <td></td>
-                  </tr>
-                `;
-              }
               const prediction = historicalPredictionForRow(match);
               const actual = actualFromHistoricalRow(match);
               const status = isPredictionCorrect(prediction?.pick, actual);
               return `
                 <tr>
-                  <td><strong>${escapeHtml(match.Home)} - ${escapeHtml(match.Away)}</strong><br><small>${escapeHtml(match.DateISO)} · ${escapeHtml(match.Championnat || "Tous")}</small></td>
-                  <td>1 ${match.O1.toFixed(2)}<br>N ${match.OX.toFixed(2)}<br>2 ${match.O2.toFixed(2)}</td>
+                  <td>${escapeHtml(match.DateISO)}</td>
+                  <td>${escapeHtml(match.Championnat || "Tous")}</td>
+                  <td><strong>${escapeHtml(match.Home)}</strong></td>
+                  <td><strong>${escapeHtml(match.Away)}</strong></td>
+                  <td>${match.O1.toFixed(2)}</td>
+                  <td>${match.OX.toFixed(2)}</td>
+                  <td>${match.O2.toFixed(2)}</td>
                   <td>${escapeHtml(match.Score)}</td>
                   <td>${escapeHtml(actualResultLabel(actual))}</td>
                   <td>${prediction ? `${escapeHtml(prediction.pick)}<br><small>${prediction.pct} %</small>` : "-"}</td>
@@ -869,7 +856,7 @@ function renderDashboard() {
         </tbody>
       </table>
     `
-    : `<p class="empty-inline">Aucun match fini trouvé pour cette période. L'API gratuite ne couvre pas tous les matchs, et l'historique Supabase prend le relais seulement pour les saisons déjà chargées.</p>`;
+    : `<p class="empty-inline">Aucun match historique trouvé pour cette période. Essaie Tous pour afficher la base Supabase avec les cotes, scores et prédictions.</p>`;
 }
 
 const COLUMN_HELP = {
