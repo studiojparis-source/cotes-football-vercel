@@ -759,7 +759,10 @@ function renderDashboard() {
 
   const liveUpcoming = filterLiveMatches(liveMatchesState.upcoming, upcomingPeriod, "future");
   const manualUpcoming = filteredTrackedMatches(upcomingPeriod).filter((match) => !match.actual || match.actual.homeGoals === "" || match.actual.awayGoals === "");
-  const finished = filteredHistoricalFinished(finishedPeriod);
+  const finishedUsesLiveApi = finishedPeriod !== "all";
+  const finished = finishedUsesLiveApi
+    ? filterLiveMatches(liveMatchesState.finished, finishedPeriod, "past")
+    : filteredHistoricalFinished(finishedPeriod);
   $("finishedCount").textContent = `${finished.length} match${finished.length > 1 ? "s" : ""}`;
 
   if (liveMatchesState.loading) {
@@ -808,6 +811,21 @@ function renderDashboard() {
       : `<p class="empty-inline">Aucun match à venir trouvé par football-data.org sur cette période. L'API gratuite affiche seulement certaines compétitions, donc en période creuse il peut y avoir 0 match.</p>`;
   }
 
+  if (finishedUsesLiveApi && liveMatchesState.loading) {
+    finishedContainer.innerHTML = `<p class="empty-inline">Chargement des résultats récents...</p>`;
+    return;
+  }
+
+  if (finishedUsesLiveApi && liveMatchesState.configured === false) {
+    finishedContainer.innerHTML = footballDataConfigMessage();
+    return;
+  }
+
+  if (finishedUsesLiveApi && liveMatchesState.error) {
+    finishedContainer.innerHTML = `<p class="empty-inline">Impossible de charger les résultats en ligne : ${escapeHtml(liveMatchesState.error)}</p>`;
+    return;
+  }
+
   finishedContainer.innerHTML = finished.length
     ? `
       <table>
@@ -831,6 +849,29 @@ function renderDashboard() {
         <tbody>
           ${finished
             .map((match) => {
+              if (finishedUsesLiveApi) {
+                const homeGoals = match.score?.home;
+                const awayGoals = match.score?.away;
+                const actual = { homeGoals, awayGoals };
+                const score = Number.isFinite(homeGoals) && Number.isFinite(awayGoals) ? `${homeGoals}-${awayGoals}` : "-";
+                return `
+                  <tr>
+                    <td>${escapeHtml(liveMatchDateISO(match))}</td>
+                    <td>${escapeHtml(match.competition || "Compétition")}</td>
+                    <td><strong>${escapeHtml(match.home)}</strong></td>
+                    <td><strong>${escapeHtml(match.away)}</strong></td>
+                    <td><small>Non fournie</small></td>
+                    <td><small>Non fournie</small></td>
+                    <td><small>Non fournie</small></td>
+                    <td>${escapeHtml(score)}</td>
+                    <td>${escapeHtml(actualResultLabel(actual))}</td>
+                    <td><small>Pas calculée sans cotes</small></td>
+                    <td>-</td>
+                    <td><span class="status-pill">Résultat réel</span></td>
+                    <td></td>
+                  </tr>
+                `;
+              }
               const prediction = historicalPredictionForRow(match);
               const actual = actualFromHistoricalRow(match);
               const status = isPredictionCorrect(prediction?.pick, actual);
@@ -856,7 +897,9 @@ function renderDashboard() {
         </tbody>
       </table>
     `
-    : `<p class="empty-inline">Aucun match historique trouvé pour cette période. Essaie Tous pour afficher la base Supabase avec les cotes, scores et prédictions.</p>`;
+    : finishedUsesLiveApi
+      ? `<p class="empty-inline">Aucun résultat récent trouvé par football-data.org sur cette période. Essaie Tous pour afficher l'historique Supabase avec les cotes et prédictions.</p>`
+      : `<p class="empty-inline">Aucun match historique trouvé pour cette période. Essaie Tous pour afficher la base Supabase avec les cotes, scores et prédictions.</p>`;
 }
 
 const COLUMN_HELP = {
