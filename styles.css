@@ -255,6 +255,19 @@ button:hover,
   max-width: 820px;
 }
 
+.simulation-filter-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 360px);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.simulation-filter-grid select {
+  border-color: #9de5dc;
+  background: #f4fffb;
+  font-weight: 800;
+}
+
 .odds-entry-grid label {
   color: var(--ink);
 }
@@ -609,6 +622,16 @@ button:hover,
   height: 100%;
   border-radius: inherit;
   background: var(--accent);
+}
+
+.strong-signal {
+  border-color: #43d7bd;
+  background: #e9faf6;
+}
+
+.strong-signal span,
+.strong-signal strong {
+  color: var(--accent-dark);
 }
 
 .compact-table table {

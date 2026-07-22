@@ -949,7 +949,11 @@ function renderHeaderCell(col) {
 
 function renderList(container, rows) {
   container.innerHTML = `<div class="signal-list">${rows
-    .map(([name, value]) => `<div class="line-item"><span>${escapeHtml(name)}</span><strong>${escapeHtml(value)} %</strong></div>`)
+    .map(([name, value]) => {
+      const isExcluded = name.includes("+1.5 buts") || name.includes("+0.5 but");
+      const isStrong = !isExcluded && Number(value) >= 60;
+      return `<div class="line-item ${isStrong ? "strong-signal" : ""}"><span>${isStrong ? "► " : ""}${escapeHtml(name)}</span><strong>${escapeHtml(value)} %</strong></div>`;
+    })
     .join("")}</div>`;
 }
 
@@ -1147,10 +1151,19 @@ function runAnalysis() {
     return;
   }
 
-  const rows = base;
+  const selectedChampionship = $("championshipFilter").value || "Tous";
+  const rows = selectedChampionship === "Tous" ? base : base.filter((row) => row.Championnat === selectedChampionship);
   const o1 = toNumber($("o1").value);
   const ox = toNumber($("ox").value);
   const o2 = toNumber($("o2").value);
+
+  if (!rows.length) {
+    empty.textContent = "Aucun match pour ce championnat.";
+    empty.classList.remove("hidden");
+    results.classList.add("hidden");
+    return;
+  }
+
   const best = chooseBestSample(rows, o1, ox, o2);
 
   if (!best) {
@@ -1179,9 +1192,9 @@ function runAnalysis() {
   const safePick = proposals["Petite cote"];
   if (safePick) {
     $("recommendedPick").textContent = safePick.best[0];
-    $("recommendedWhy").textContent = `${safePick.best[1]} % des matchs similaires ont validé ce marché. C'est la proposition la plus prudente selon les données, autour d'une petite cote ${safePick.target}.`;
+    $("recommendedWhy").textContent = `${safePick.best[1]} % des matchs similaires ont validé ce marché sur ${selectedChampionship === "Tous" ? "toute la base" : selectedChampionship}. C'est la proposition la plus prudente selon les données, autour d'une petite cote ${safePick.target}.`;
     $("resultPick").textContent = safePick.best[0];
-    $("resultWhy").textContent = `${safePick.best[1]} % des matchs similaires ont validé ce marché. Proposition prudente selon les cotes entrées.`;
+    $("resultWhy").textContent = `${safePick.best[1]} % des matchs similaires ont validé ce marché. Championnat analysé : ${selectedChampionship}. Base utilisée : ${rows.length.toLocaleString("fr-FR")} matchs.`;
   }
   $("proposals").innerHTML = Object.entries(proposals)
     .map(
@@ -1201,6 +1214,8 @@ function renderCalculations() {
   const ox = toNumber($("ox").value);
   const o2 = toNumber($("o2").value);
   const container = $("calculationSummary");
+  const selectedChampionship = $("championshipFilter").value || "Tous";
+  const rows = selectedChampionship === "Tous" ? base : base.filter((row) => row.Championnat === selectedChampionship);
 
   if (![o1, ox, o2].every((value) => Number.isFinite(value) && value > 1)) {
     container.innerHTML = `<article class="calc-card"><span>Erreur</span><strong>Cotes invalides</strong></article>`;
@@ -1219,7 +1234,7 @@ function renderCalculations() {
   container.innerHTML = `
     <article class="calc-card calc-wide">
       <span>Ce que l'app utilise pour recommander</span>
-      <strong>Le profil des cotes + les matchs historiques similaires</strong>
+      <strong>Le profil des cotes + ${rows.length.toLocaleString("fr-FR")} matchs ${selectedChampionship === "Tous" ? "de toute la base" : `du championnat ${escapeHtml(selectedChampionship)}`}</strong>
     </article>
     <article class="calc-card">
       <span>Probabilité brute domicile</span>
