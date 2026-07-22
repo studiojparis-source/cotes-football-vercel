@@ -963,6 +963,83 @@ function renderScores(container, rows) {
     .join("")}</div>`;
 }
 
+function highlightedReportLine(line) {
+  const lower = line.toLowerCase();
+  const excluded = lower.includes("+1.5 buts") || lower.includes("+0.5 but") || lower.includes("+0,5 but");
+  const match = line.match(/(\d+(?:[.,]\d+)?)\s*%/);
+  if (!excluded && match && Number(match[1].replace(",", ".")) >= 60) {
+    return `► ${line}`;
+  }
+  return line;
+}
+
+function buildAnalysisReport({ selectedChampionship, rows, best, proposals, scoreCounts, o1, ox, o2 }) {
+  const lines = [];
+  const add = (line = "") => lines.push(highlightedReportLine(line));
+  const pctText = (value) => `${Number(value || 0).toFixed(0)} %`;
+  const signals = best.signals;
+  const [exactScore, exactCount] = scoreCounts[0] || ["-", 0];
+
+  add(`Championnat analysé : ${selectedChampionship}`);
+  add(`Base utilisée : ${rows.length.toLocaleString("fr-FR")} matchs`);
+  add(`Matchs analysés : ${best.sample.length.toLocaleString("fr-FR")}`);
+  add(`Confiance : ${best.confidence}`);
+  add("");
+  add(`COTES : 1 = ${o1.toFixed(2)} | N = ${ox.toFixed(2)} | 2 = ${o2.toFixed(2)}`);
+  add("");
+  add(`MEILLEUR SIGNAL : ${best.bestName} — ${pctText(best.bestPct)}`);
+  add(`SCORE EXACT CONSEILLÉ : ${exactScore} (${exactCount} fois)`);
+  add("");
+  add("PROPOSITIONS PAR OBJECTIF DE COTE");
+  [
+    ["Cote 1.30", proposals["Petite cote"]],
+    ["Cote 1.70", proposals["Cote moyenne"]],
+    ["Cote 2.00", proposals["Plus risqué"]],
+    ["Cote 3.00", proposals["Très risqué"]],
+  ].forEach(([label, proposal]) => {
+    if (proposal) add(`${label} : ${proposal.best[0]} — ${pctText(proposal.best[1])}`);
+  });
+  add("");
+  add("BUTS PAR ÉQUIPE (+0.5 / -0.5)");
+  add(`Domicile +0.5 but : ${pctText(signals["Domicile +0.5 but"])}`);
+  add(`Domicile -0.5 but : ${pctText(signals["Domicile -0.5 but"])}`);
+  add(`Extérieur +0.5 but : ${pctText(signals["Extérieur +0.5 but"])}`);
+  add(`Extérieur -0.5 but : ${pctText(signals["Extérieur -0.5 but"])}`);
+  add("");
+  add("MARCHÉS DE BUTS");
+  add(`+1.5 buts : ${pctText(signals["+1.5 buts"])}`);
+  add(`-1.5 buts : ${pctText(signals["-1.5 buts"])}`);
+  add(`+2.5 buts : ${pctText(signals["+2.5 buts"])}`);
+  add(`-2.5 buts : ${pctText(signals["-2.5 buts"])}`);
+  add(`+3.5 buts : ${pctText(signals["+3.5 buts"])}`);
+  add(`-3.5 buts : ${pctText(signals["-3.5 buts"])}`);
+  add("");
+  add("BTTS / RÉSULTAT / DOUBLE CHANCE");
+  add(`BTTS Oui : ${pctText(signals["BTTS Oui"])}`);
+  add(`BTTS Non : ${pctText(signals["BTTS Non"])}`);
+  add(`Domicile gagne : ${pctText(signals["Domicile gagne"])}`);
+  add(`Match nul : ${pctText(signals["Match nul"])}`);
+  add(`Extérieur gagne : ${pctText(signals["Extérieur gagne"])}`);
+  add(`Double chance 1X : ${pctText(signals["Double chance 1X"])}`);
+  add(`Double chance X2 : ${pctText(signals["Double chance X2"])}`);
+  add(`Double chance 12 : ${pctText(signals["Double chance 12"])}`);
+  add("");
+  add("MI-TEMPS");
+  add(`Domicile gagne MT : ${pctText(signals["Domicile gagne MT"])}`);
+  add(`Nul à la mi-temps : ${pctText(signals["Nul à la mi-temps"])}`);
+  add(`Extérieur gagne MT : ${pctText(signals["Extérieur gagne MT"])}`);
+  add("");
+  add("MI-TEMPS LA PLUS PROLIFIQUE");
+  add(`1ère mi-temps : ${pctText(signals["1ère MT plus prolifique"])}`);
+  add(`2ème mi-temps : ${pctText(signals["2ème MT plus prolifique"])}`);
+  add(`Égalité : ${pctText(pct(best.sample, "MT_Prolifique", "Égalité"))}`);
+  add("");
+  add("Scores les plus fréquents :");
+  scoreCounts.slice(0, 5).forEach(([score, count]) => add(`${score} : ${count} fois`));
+
+  return lines.join("\n");
+}
+
 function renderTable(container, rows) {
   const cols = [
     "Date",
@@ -1202,6 +1279,17 @@ function runAnalysis() {
         `<article class="proposal"><span>${escapeHtml(risk)} <em>${escapeHtml(proposal.target)}</em></span><strong>${escapeHtml(proposal.best[0])}</strong><small>${proposal.best[1]} % dans les matchs similaires</small></article>`,
     )
     .join("");
+
+  $("analysisReport").textContent = buildAnalysisReport({
+    selectedChampionship,
+    rows,
+    best,
+    proposals,
+    scoreCounts,
+    o1,
+    ox,
+    o2,
+  });
 
   renderList($("signalsTab"), Object.entries(best.signals));
   renderScores($("scoresTab"), scoreCounts);

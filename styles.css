@@ -758,6 +758,25 @@ button:hover,
   border-color: #f2d48a;
 }
 
+.analysis-report-card {
+  border-color: #8dd8cf;
+}
+
+.analysis-report {
+  min-height: 260px;
+  max-height: 560px;
+  margin: 0;
+  overflow: auto;
+  border: 1px solid var(--line);
+  background: #071f1b;
+  color: #e9faf6;
+  padding: 16px;
+  white-space: pre-wrap;
+  line-height: 1.55;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.88rem;
+}
+
 .calc-wide {
   grid-column: 1 / -1;
 }
